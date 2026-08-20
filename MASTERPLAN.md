@@ -20,8 +20,8 @@
 
 ## 1. Executive Summary
 
-**SyncBoard Web** is the frontend for a real-time collaborative Kanban board. It
-renders Workspaces, Boards, Lists, and Cards; supports drag-and-drop reordering with an
+**SyncBoard Web** is the frontend for a real-time collaborative Kanban board. It renders
+Workspaces, Boards, Lists, and Cards; supports drag-and-drop reordering with an
 optimistic UI; and reflects every teammate's changes live via a Socket.io connection to
 `syncboard_api`.
 
@@ -29,10 +29,10 @@ optimistic UI; and reflects every teammate's changes live via a Socket.io connec
 
 - **Modern React architecture:** React 19 + Vite + TypeScript
 - **Type-safe routing:** TanStack Router with loaders and protected route guards
-- **Efficient server-state management:** TanStack Query, patched directly by
-  incoming socket events instead of polling
-- **Optimistic drag-and-drop:** `@dnd-kit`, with instant UI feedback and rollback on
-  API failure
+- **Efficient server-state management:** TanStack Query, patched directly by incoming
+  socket events instead of polling
+- **Optimistic drag-and-drop:** `@dnd-kit`, with instant UI feedback and rollback on API
+  failure
 - **Live presence:** avatars + green dots for everyone currently viewing a board
 
 ### Repository Information
@@ -76,8 +76,8 @@ manual refresh.
    for inviting teammates and managing Admin/Member roles
 4. **Active Board** — the core Kanban canvas: Lists, Cards, drag-and-drop, presence
    header
-5. **Card Detail Modal** — rich-text description, checklist with progress bar,
-   chat-like activity feed
+5. **Card Detail Modal** — rich-text description, checklist with progress bar, chat-like
+   activity feed
 
 ### 2.4 Non-Goals (Out of Scope)
 
@@ -135,8 +135,8 @@ access, including real-time events, is mediated by the API.
 
 Rather than treating Socket.io as a signal to refetch, incoming events write directly
 into the TanStack Query cache via `queryClient.setQueryData`, keyed by board ID. This
-keeps the update path for "my own drag" and "a teammate's drag" nearly identical —
-both ultimately flow through the same cache-patch function.
+keeps the update path for "my own drag" and "a teammate's drag" nearly identical — both
+ultimately flow through the same cache-patch function.
 
 ---
 
@@ -194,9 +194,9 @@ both ultimately flow through the same cache-patch function.
 
 ### 5.1 Protected Route Guarding
 
-TanStack Router's `beforeLoad` hook checks for a valid session (access token present
-and not expired) before entering any `/app/*` route, redirecting to `/login` otherwise.
-This runs at the router level, not inside individual components, so there's no
+TanStack Router's `beforeLoad` hook checks for a valid session (access token present and
+not expired) before entering any `/app/*` route, redirecting to `/login` otherwise. This
+runs at the router level, not inside individual components, so there's no
 flash-of-protected-content before redirect.
 
 ### 5.2 Active Board Layout
@@ -321,7 +321,8 @@ initial letter(s) of the user's email rather than an image.
 
 - `DndContext` wraps the board canvas; each `List` is a `SortableContext`.
 - `onDragEnd` computes the new fractional `order` (matching the backend's ordering
-  scheme — see [`api/MASTERPLAN.md`](../api/MASTERPLAN.md#53-reorder-strategy-fractional-ordering))
+  scheme — see
+  [`api/MASTERPLAN.md`](../api/MASTERPLAN.md#53-reorder-strategy-fractional-ordering))
   and immediately writes the optimistic result into the TanStack Query cache.
 - The same handler fires the `PATCH /cards/:id` mutation (body: `{ listId, order }`);
   `onError` reverts to the cache snapshot taken before the drag began (`onMutate`).
@@ -356,8 +357,8 @@ in-progress local interactions (e.g. an open modal, an in-flight drag).
 ### 9.2 Protected Routes
 
 - Enforced at the router level (`beforeLoad`), not just by hiding UI — an
-  unauthenticated user is redirected before any protected loader runs, so no
-  board data is ever requested without a valid session.
+  unauthenticated user is redirected before any protected loader runs, so no board data
+  is ever requested without a valid session.
 
 ### 9.3 Input Handling
 
@@ -380,7 +381,7 @@ in-progress local interactions (e.g. an open modal, an in-flight drag).
 
 Husky enforces quality gates locally, before code ever reaches CI:
 
-- **Pre-commit:** `lint` + `format:check` against staged files
+- **Pre-commit:** `lint` + `format:check` + `type-check` + `test`
 - **Commit message:** validated against Gitmoji format (e.g.
   `:sparkles: Add optimistic drag-and-drop for cards`), matching the convention used in
   `syncboard_api`
@@ -426,9 +427,7 @@ services:
 
 ```typescript
 // e2e/realtime-sync.spec.ts (sketch)
-test("card move in one browser context appears in another", async ({
-  browser,
-}) => {
+test("card move in one browser context appears in another", async ({ browser }) => {
   const ctxA = await browser.newContext();
   const ctxB = await browser.newContext();
   const pageA = await ctxA.newPage();
@@ -490,10 +489,10 @@ Each environment has a dedicated GCP project and service account, shared with
 | **Preview**     | `moliveda-gcloudprojects-prev` | `cicd-deployer-prev@...` |
 | **Production**  | `moliveda-gcloudprojects-prod` | `cicd-deployer-prod@...` |
 
-**Preview is frontend-only.** `syncboard_api` has no Preview environment — every
-Preview deploy of `syncboard_web` points at the **Development** API instead of
-provisioning a backend per PR. Preview exists specifically because UI/interactivity
-changes are easiest to review live, on a real deployed URL, rather than from a diff.
+**Preview is frontend-only.** `syncboard_api` has no Preview environment — every Preview
+deploy of `syncboard_web` points at the **Development** API instead of provisioning a
+backend per PR. Preview exists specifically because UI/interactivity changes are easiest
+to review live, on a real deployed URL, rather than from a diff.
 
 ### 12.1 GitFlow Branch → Environment Mapping
 
@@ -507,8 +506,9 @@ changes are easiest to review live, on a real deployed URL, rather than from a d
 
 ### 12.2 Pipeline Stages
 
-1. **CI (every PR):** lint, type-check, unit tests with coverage (`npm run test:coverage`)
-   — the job fails if coverage is below 100%, then the Playwright smoke suite
+1. **CI (every PR):** lint, type-check, unit tests with coverage
+   (`npm run test:coverage`) — the job fails if coverage is below 100%, then the
+   Playwright smoke suite
 2. **Deploy Preview:** on PR open/update, build the Vite bundle with
    `VITE_API_BASE_URL`/`VITE_SOCKET_URL` set to the Development API, deploy an ephemeral
    `syncboard-web` Cloud Run revision, comment the preview URL on the PR; torn down on
@@ -521,8 +521,8 @@ changes are easiest to review live, on a real deployed URL, rather than from a d
 
 ### 12.3 Build-Time vs Runtime Env Vars
 
-Because Vite inlines `VITE_*` variables at build time, each environment requires its
-own build (not just a redeployed image with different runtime env vars). CI builds a
+Because Vite inlines `VITE_*` variables at build time, each environment requires its own
+build (not just a redeployed image with different runtime env vars). CI builds a
 distinct image per environment rather than promoting one image across dev → staging →
 prod.
 
@@ -536,8 +536,40 @@ VITE_API_BASE_URL
 VITE_SOCKET_URL
 ```
 
+Preview, Development, and Staging additionally require (Production does not):
+
+```text
+AUTH_USERNAME
+AUTH_PASSWORD
+```
+
+These are **Docker build-time secrets** (passed as `--build-arg`/`build-args` when
+building the `protected` Dockerfile target), not Cloud Run runtime env vars.
+
 Authentication to GCP uses Workload Identity Federation — no long-lived service account
 keys stored in CI, matching `syncboard_api`'s deployment pipeline.
+
+### 12.5 Environment Access Protection
+
+Preview, Development, and Staging are not customer-facing, so they're kept internal-only
+behind Nginx HTTP Basic Auth; Production is public with no Basic Auth. This mirrors the
+pattern used by the sibling `sentient-archive/web` project.
+
+The choice is made at **build time** by selecting the Dockerfile stage:
+
+- `docker build --target protected --build-arg AUTH_USERNAME=... --build-arg AUTH_PASSWORD=...`
+  installs `apache2-utils`, generates `/etc/nginx/.htpasswd` via `htpasswd -cb` during
+  the image build, and serves `nginx.protected.conf`. Used for Preview/Development/
+  Staging.
+- `docker build --target production` (no auth args) serves the public `nginx.conf`
+  directly. Used for Production.
+
+`/health` is excluded from auth in `nginx.protected.conf`, so Cloud Run health checks
+keep working either way. Because the target differs per environment, each environment
+already builds its own image (consistent with the `VITE_*` build-time rule in
+CLAUDE.md's Architectural Constraints) — CI passes `target:`/`build-args` per
+environment via `docker/build-push-action`, matching `sentient-archive/web`'s
+`deploy-dev.yml`/`deploy-prod.yml` workflows.
 
 ---
 
@@ -545,11 +577,13 @@ keys stored in CI, matching `syncboard_api`'s deployment pipeline.
 
 ### Phase 0 — Project Scaffolding & Testing Infra
 
-- [ ] Initialize the TypeScript project (Vite, `tsconfig.json`, ESLint, Prettier, Husky
-      hooks)
-- [ ] Wire up Vitest + React Testing Library with a coverage threshold of 100%
+- [x] Initialize the TypeScript project (Vite, `tsconfig.json`, ESLint, Prettier, Husky
+      hooks) — `eslint.config.ts` needs the `jiti` (≥2.2.0) devDependency to load under
+      Node (ESLint's flat-config TS loader requires it; easy to miss since there's no
+      `package.json` yet to catch it)
+- [x] Wire up Vitest + React Testing Library with a coverage threshold of 100%
       (`coverage.thresholds` in `vite.config.ts`)
-- [ ] Add `docker-compose.yml` for local dev parity
+- [x] Add `docker-compose.yml` for local dev parity
 
 ### Phase 1 — Static Board UI
 
