@@ -72,4 +72,4 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           image: ${{ env.IMAGE_REPOSITORY }}:staging-${{ github.sha }}
-          flags: "--allow-unauthenticated"
+          flags: "--allow-unauthenticated --port=80"
