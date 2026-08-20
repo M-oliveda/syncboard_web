@@ -1,0 +1,75 @@
+# Deploy Development Workflow
+#
+# Builds the web image (Dockerfile `protected` target, HTTP Basic Auth), pushes it to
+# the public Docker Hub repository, and deploys it to the standing `syncboard-web`
+# Cloud Run service in the Development GCP project. Development has its own dedicated
+# GCP project and secrets (see MASTERPLAN.md §12.0/§12.4), pulled from the
+# `development` GitHub Environment below.
+#
+# Reusable workflow — only ever invoked by ci.yml's deploy-dev job after the test/e2e
+# jobs pass on a push to `develop`. Never triggers on its own `push` event, so a deploy
+# can't happen ahead of (or independently of) CI.
+
+name: Deploy Development
+
+on:
+  workflow_call:
+
+env:
+  REGION: us-central1
+  SERVICE: syncboard-web
+  IMAGE_REPOSITORY: docker.io/moliveda/syncboard-web
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image (Protected with Basic Auth)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: protected
+          build-args: |
+            AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}
+            AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}
+            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+            VITE_SOCKET_URL=${{ secrets.VITE_SOCKET_URL }}
+            VITE_APP_ENV=development
+          push: true
+          tags: ${{ env.IMAGE_REPOSITORY }}:dev-${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          image: ${{ env.IMAGE_REPOSITORY }}:dev-${{ github.sha }}
+          flags: "--allow-unauthenticated"
