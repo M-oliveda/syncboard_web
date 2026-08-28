@@ -1,9 +1,7 @@
-import { ChevronDown, MoreVertical, UserPlus, Users } from "lucide-react";
-import { useState } from "react";
+import { MoreVertical, UserPlus, Users } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -20,10 +18,15 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useCurrentWorkspace } from "@/hooks/useWorkspacesQuery";
+import {
+    useRemoveMemberMutation,
+    useUpdateMemberRoleMutation,
+} from "@/hooks/useMemberMutations";
 import { buttonVariants } from "@/lib/button-variants";
+import { mapApiWorkspaceMemberToWorkspaceMember } from "@/lib/api-mappers";
 import { cn } from "@/lib/utils";
-import { mockWorkspaceMembers } from "@/lib/mock-workspace";
-import type { MemberRole, WorkspaceMember } from "@/types/workspace";
+import type { MemberRole } from "@/types/workspace";
 
 function initials(name: string): string {
     return name
@@ -33,37 +36,24 @@ function initials(name: string): string {
         .join("");
 }
 
-export function MembersPanel() {
-    const [members, setMembers] = useState<WorkspaceMember[]>(mockWorkspaceMembers);
-    const [inviteEmail, setInviteEmail] = useState("");
-    const [inviteRole, setInviteRole] = useState<MemberRole>("member");
+export interface MembersPanelProps {
+    workspaceId: string;
+}
 
-    function handleInvite(event: React.FormEvent) {
-        event.preventDefault();
-        const email = inviteEmail.trim();
-        if (!email) return;
-
-        setMembers((current) => [
-            ...current,
-            {
-                id: `pending-${current.length}-${email}`,
-                name: email.replace(/@.*$/, ""),
-                email,
-                role: inviteRole,
-            },
-        ]);
-        setInviteEmail("");
-        setInviteRole("member");
-    }
+export function MembersPanel({ workspaceId }: MembersPanelProps) {
+    const workspaceQuery = useCurrentWorkspace();
+    const members = (workspaceQuery.data?.members ?? []).map(
+        mapApiWorkspaceMemberToWorkspaceMember,
+    );
+    const updateRoleMutation = useUpdateMemberRoleMutation(workspaceId);
+    const removeMemberMutation = useRemoveMemberMutation(workspaceId);
 
     function setRole(id: string, role: MemberRole) {
-        setMembers((current) =>
-            current.map((member) => (member.id === id ? { ...member, role } : member)),
-        );
+        updateRoleMutation.mutate({ userId: id, role });
     }
 
     function removeMember(id: string) {
-        setMembers((current) => current.filter((member) => member.id !== id));
+        removeMemberMutation.mutate(id);
     }
 
     return (
@@ -83,54 +73,31 @@ export function MembersPanel() {
                 <DialogHeader>
                     <DialogTitle>Workspace members</DialogTitle>
                     <DialogDescription>
-                        Invite teammates and manage Admin/Member roles.
+                        Manage Admin/Member roles for this workspace.
                     </DialogDescription>
                 </DialogHeader>
 
-                <form
-                    onSubmit={handleInvite}
-                    className="flex flex-col gap-2 sm:flex-row sm:items-center"
-                >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                         type="email"
                         placeholder="name@company.com"
                         aria-label="Email address to invite"
-                        value={inviteEmail}
-                        onChange={(event) => setInviteEmail(event.target.value)}
+                        disabled
                         className="min-w-0 flex-1"
                     />
-                    <DropdownMenu>
-                        <DropdownMenuTrigger
-                            render={
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        buttonVariants({
-                                            variant: "outline",
-                                            size: "default",
-                                        }),
-                                        "capitalize",
-                                    )}
-                                />
-                            }
-                        >
-                            {inviteRole}
-                            <ChevronDown className="size-4" aria-hidden="true" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => setInviteRole("member")}>
-                                Member
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setInviteRole("admin")}>
-                                Admin
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button type="submit">
+                    <button
+                        type="button"
+                        disabled
+                        className={cn(buttonVariants({ variant: "outline" }), "gap-1")}
+                    >
                         <UserPlus className="size-4" aria-hidden="true" />
                         Invite
-                    </Button>
-                </form>
+                    </button>
+                </div>
+                <p className="text-on-surface-variant -mt-1 text-xs">
+                    Teammates need an existing SyncBoard account — self-service invites
+                    aren&rsquo;t available yet.
+                </p>
 
                 <ul className="divide-border -mx-5 divide-y">
                     {members.map((member) => (

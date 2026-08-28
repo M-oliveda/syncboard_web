@@ -1,6 +1,11 @@
-import { ArrowUp, LayoutDashboard, Users } from "lucide-react";
+import { LayoutDashboard, Users } from "lucide-react";
 
-export function StatsOverview() {
+export interface StatsOverviewProps {
+    boardCount: number;
+    memberCount: number;
+}
+
+export function StatsOverview({ boardCount, memberCount }: StatsOverviewProps) {
     return (
         <div className="gap-gutter grid grid-cols-1 md:grid-cols-4">
             <div className="bg-primary-container p-container-margin flex flex-col justify-between rounded-xl shadow-sm">
@@ -12,15 +17,9 @@ export function StatsOverview() {
                         <LayoutDashboard className="size-[18px]" aria-hidden="true" />
                     </div>
                 </div>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-headline-lg text-on-primary-container">
-                        24
-                    </span>
-                    <span className="text-body-sm text-on-primary-container/70 flex items-center gap-1">
-                        <ArrowUp className="text-success size-3.5" aria-hidden="true" />
-                        12%
-                    </span>
-                </div>
+                <span className="text-headline-lg text-on-primary-container">
+                    {boardCount}
+                </span>
             </div>
 
             <div className="bg-secondary-container p-container-margin flex flex-col justify-between rounded-xl shadow-sm">
@@ -32,15 +31,9 @@ export function StatsOverview() {
                         <Users className="size-[18px]" aria-hidden="true" />
                     </div>
                 </div>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-headline-lg text-on-secondary-container">
-                        18
-                    </span>
-                    <span className="text-body-sm text-on-secondary-container/70 flex items-center gap-1">
-                        <ArrowUp className="text-success size-3.5" aria-hidden="true" />
-                        3
-                    </span>
-                </div>
+                <span className="text-headline-lg text-on-secondary-container">
+                    {memberCount}
+                </span>
             </div>
         </div>
     );
