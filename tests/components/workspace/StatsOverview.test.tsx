@@ -5,11 +5,11 @@ import { StatsOverview } from "@/components/workspace/StatsOverview";
 
 describe("StatsOverview", () => {
     it("renders the total boards and members stat tiles", () => {
-        render(<StatsOverview />);
+        render(<StatsOverview boardCount={3} memberCount={5} />);
 
         expect(screen.getByText("Total boards")).toBeInTheDocument();
-        expect(screen.getByText("24")).toBeInTheDocument();
+        expect(screen.getByText("3")).toBeInTheDocument();
         expect(screen.getByText("Members")).toBeInTheDocument();
-        expect(screen.getByText("18")).toBeInTheDocument();
+        expect(screen.getByText("5")).toBeInTheDocument();
     });
 });
