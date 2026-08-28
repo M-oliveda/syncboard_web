@@ -70,14 +70,33 @@ manual refresh.
 
 ### 2.3 Core User Interfaces
 
-1. **Landing Page** — product pitch, feature highlights, CTA to register/login
+Full Phase 1 page inventory, mapped against the
+[SyncBoard Stitch project](https://stitch.withgoogle.com/projects/6668508160005015741)
+and the `origin-ui`-based design system documented in [`DESIGN.md`](./DESIGN.md):
+
+1. **Landing Page** — product pitch, feature highlights, a 3-step "how it works"
+   section, an FAQ, and a dark-surface CTA section, with scroll/hover micro-interaction
+   animation (the only page in Phase 1 scope with motion beyond `origin-ui`'s built-in
+   component interactions). Uses `framer-motion` for entrance stagger, scroll-triggered
+   reveals (`whileInView`), and the hero's looping drag-and-drop demo animation, wrapped
+   in `MotionConfig reducedMotion="user"` so it respects the OS motion preference;
+   elsewhere in the app, default to Tailwind transitions/CSS keyframes rather than
+   pulling in a motion library
 2. **Auth Pages** — login, register, forgot password
-3. **Dashboard** — Workspace sidebar, Board grid, "Create Board" action, Members panel
+3. **Legal Pages** — Terms of Service & Privacy Policy, long-form static content
+4. **Dashboard** — Workspace sidebar, Board grid, "Create Board" action, Members panel
    for inviting teammates and managing Admin/Member roles
-4. **Active Board** — the core Kanban canvas: Lists, Cards, drag-and-drop, presence
+5. **Product Roadmap** — a pre-populated example board demonstrating SyncBoard used for
+   roadmap planning; reuses the same Board Canvas/List/Card primitives as the Active
+   Board, seeded with static demo data instead of a live workspace
+6. **Active Board** — the core Kanban canvas: Lists, Cards, drag-and-drop, presence
    header
-5. **Card Detail Modal** — rich-text description, checklist with progress bar, chat-like
+7. **Card Detail Modal** — rich-text description, checklist with progress bar, chat-like
    activity feed
+
+Exact copy, imagery, and the favicon/logo asset live in the Stitch project — treat this
+list as the structural contract; confirm visual detail against Stitch/`DESIGN.md` before
+implementing each page.
 
 ### 2.4 Non-Goals (Out of Scope)
 
@@ -166,9 +185,21 @@ ultimately flow through the same cache-patch function.
 | **Styling**     | Tailwind CSS                          | Utility-first styling                              |
 | **Components**  | `origin-ui`                           | Shadcn/ui-based components with micro-interactions |
 | **Icons**       | Lucide React                          | Icon set                                           |
+| **Motion**      | `framer-motion`                       | Landing page entrance/scroll animation only        |
 | **Drag & Drop** | `@dnd-kit/core` + `@dnd-kit/sortable` | Accessible drag-and-drop for cards/lists           |
 
-### 4.4 Development Tools
+### 4.4 Design System
+
+[`DESIGN.md`](./DESIGN.md) is the single source of truth for design tokens — colors,
+`Space Grotesk` typography scale, 4px-baseline spacing, and the "Soft-Geometric" radii
+scale (10px standard / 14px containers / 18px dialogs). It's implemented as Tailwind
+v4's CSS-first `@theme` tokens in `src/index.css` (see
+[Tailwind CSS Best Practices](./AGENTS.md#tailwind-css-best-practices-project-setup) in
+`AGENTS.md`), not hardcoded per-component. `origin-ui` components
+(<https://originui.moliveda.dev/>) are the component primitives layered on top of those
+tokens. Don't introduce ad hoc colors, fonts, or radii outside this token set.
+
+### 4.5 Development Tools
 
 | Category        | Technology                     | Purpose                                         |
 | :-------------- | :----------------------------- | :---------------------------------------------- |
@@ -183,14 +214,17 @@ ultimately flow through the same cache-patch function.
 
 ## 5. Routes & Pages
 
-| Route                  | Type            | Component / Purpose                            |
-| ---------------------- | --------------- | ---------------------------------------------- |
-| `/`                    | Public          | Landing page — pitch, feature highlights, CTA  |
-| `/login`               | Public (unauth) | Login form                                     |
-| `/register`            | Public (unauth) | Registration form                              |
-| `/forgot-password`     | Public (unauth) | Password-reset trigger                         |
-| `/app`                 | Protected       | Home app shell: Workspace sidebar + Board grid |
-| `/app/boards/:boardId` | Protected       | Active board — the Kanban canvas               |
+| Route                  | Type            | Component / Purpose                                    |
+| ---------------------- | --------------- | ------------------------------------------------------ |
+| `/`                    | Public          | Landing page — pitch, feature highlights, animated CTA |
+| `/login`               | Public (unauth) | Login form                                             |
+| `/register`            | Public (unauth) | Registration form                                      |
+| `/forgot-password`     | Public (unauth) | Password-reset trigger                                 |
+| `/terms`               | Public          | Terms of Service (static content)                      |
+| `/privacy`             | Public          | Privacy Policy (static content)                        |
+| `/roadmap`             | Public          | Product Roadmap — example board, static demo data      |
+| `/app`                 | Protected       | Home app shell: Workspace sidebar + Board grid         |
+| `/app/boards/:boardId` | Protected       | Active board — the Kanban canvas                       |
 
 ### 5.1 Protected Route Guarding
 
@@ -236,6 +270,14 @@ Opens as an overlay when a card is clicked (route-driven, e.g.
 src/
 ├── components/
 │   ├── ui/                    # origin-ui primitives (Button, Dialog, Avatar, ...)
+│   ├── marketing/
+│   │   ├── Hero.tsx              # Landing page hero, framer-motion entrance + demo
+│   │   ├── FeatureHighlights.tsx
+│   │   ├── HowItWorks.tsx          # 3-step "how it works" section
+│   │   ├── FaqSection.tsx            # FAQ accordion (vendored origin-ui Accordion)
+│   │   └── CtaSection.tsx              # Dark-surface CTA footer
+│   ├── legal/
+│   │   └── LegalDocument.tsx         # Shared layout for Terms of Service / Privacy Policy
 │   ├── layout/
 │   │   ├── AppShell.tsx
 │   │   ├── Sidebar.tsx
@@ -585,10 +627,30 @@ environment via `docker/build-push-action`, matching `sentient-archive/web`'s
       (`coverage.thresholds` in `vite.config.ts`)
 - [x] Add `docker-compose.yml` for local dev parity
 
-### Phase 1 — Static Board UI
+### Phase 1 — Static Board UI, Marketing & Legal Pages
 
-- [ ] Build the board layout (Canvas, Lists, Cards) against mock/static data
-- [ ] Validate the visual design and responsive behavior before wiring any data fetching
+- [x] Install and configure Tailwind CSS v4 + `origin-ui`; port
+      [`DESIGN.md`](./DESIGN.md) into Tailwind v4's `@theme` tokens in `src/index.css`
+      (colors, `Space Grotesk` via Google Fonts import, spacing scale, radii scale) —
+      `origin-ui` primitives vendored unmodified from the sibling `origin-ui_web` repo
+      per the project's local sourcing convention
+- [x] Logo/favicon: recreated as a `lucide-react` `Kanban` mark (`Logo.tsx` +
+      `public/favicon.svg`) rather than sourced from Stitch, per explicit direction
+- [x] Build the Landing page (hero, feature highlights, how-it-works, FAQ, dark-surface
+      CTA section, mobile navigation) against static copy, including its `framer-motion`
+      entrance/scroll animation
+- [x] Build Auth page shells (Login, Sign Up, Forgot Password) — UI only, no submission
+      wiring yet
+- [x] Build the Terms of Service and Privacy Policy static pages
+- [x] Build the board layout (Canvas, Lists, Cards) against mock/static data
+- [x] Build the Dashboard (Workspace sidebar + Board grid + Members panel UI)
+- [x] Build the Product Roadmap example board — same Board Canvas/List/Card primitives,
+      seeded with static demo data
+- [x] Build the Card Detail modal shell (rich-text area, checklist, activity feed)
+      against mock data — route-driven via `?card=` on `/app/boards/$boardId`
+- [x] Validate the visual design and responsive behavior across breakpoints before
+      wiring any data fetching — AppShell's sidebar collapses to a `Sheet`-based mobile
+      drawer below `lg`
 
 ### Phase 2 — REST Integration
 
