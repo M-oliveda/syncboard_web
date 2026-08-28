@@ -111,6 +111,7 @@ export default defineConfig([
             "*.config.js",
             "*.config.cjs",
             ".husky/**",
+            "src/routeTree.gen.ts",
         ],
     },
 ]);

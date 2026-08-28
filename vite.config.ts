@@ -1,10 +1,20 @@
 import path from "node:path";
 
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        tanstackRouter({
+            target: "react",
+            routesDirectory: "./src/routes",
+            generatedRouteTree: "./src/routeTree.gen.ts",
+        }),
+        react(),
+        tailwindcss(),
+    ],
     resolve: {
         alias: {
             "@": path.resolve(import.meta.dirname, "./src"),
@@ -23,7 +33,14 @@ export default defineConfig({
                 functions: 100,
                 lines: 100,
             },
-            exclude: ["src/main.tsx", "src/vite-env.d.ts", "src/**/*.d.ts"],
+            exclude: [
+                "src/main.tsx",
+                "src/vite-env.d.ts",
+                "src/**/*.d.ts",
+                "src/routeTree.gen.ts",
+                "src/routes/**",
+                "src/components/ui/**",
+            ],
         },
     },
 });
