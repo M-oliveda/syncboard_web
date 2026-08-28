@@ -1,15 +1,183 @@
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ============================================================
+   Design tokens — transcribed from DESIGN.md (the "Origin UI"
+   design system). DESIGN.md is the source of truth; this file is
+   its Tailwind v4 implementation — never hardcode a color, font,
+   or radius that isn't defined here.
+   ============================================================ */
+
+@theme {
+    /* --- DESIGN.md color tokens --- */
+    --color-surface: #fff8f3;
+    --color-surface-dim: #e2d8ce;
+    --color-surface-bright: #fff8f3;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #fcf2e7;
+    --color-surface-container: #f7ece1;
+    --color-surface-container-high: #f1e7db;
+    --color-surface-container-highest: #ebe1d6;
+    --color-on-surface: #1f1b14;
+    --color-on-surface-variant: #43474a;
+    --color-inverse-surface: #353028;
+    --color-inverse-on-surface: #f9efe4;
+    --color-outline: #73787b;
+    --color-outline-variant: #c3c7ca;
+    --color-surface-tint: #50616a;
+    --color-primary: #0c1e26;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #22333b;
+    --color-on-primary-container: #899ba5;
+    --color-inverse-primary: #b7c9d3;
+    --color-secondary: #6f5b42;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #f8dbbc;
+    --color-on-secondary-container: #745f46;
+    --color-tertiary: #251a0d;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #3b2f20;
+    --color-on-tertiary-container: #a89682;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #93000a;
+    --color-primary-fixed: #d3e5f0;
+    --color-primary-fixed-dim: #b7c9d3;
+    --color-on-primary-fixed: #0c1e25;
+    --color-on-primary-fixed-variant: #384952;
+    --color-secondary-fixed: #fbdebf;
+    --color-secondary-fixed-dim: #ddc2a4;
+    --color-on-secondary-fixed: #271906;
+    --color-on-secondary-fixed-variant: #56432d;
+    --color-tertiary-fixed: #f4dfc9;
+    --color-tertiary-fixed-dim: #d7c3ae;
+    --color-on-tertiary-fixed: #241a0c;
+    --color-on-tertiary-fixed-variant: #524534;
+    --color-background: #fff8f3;
+    --color-on-background: #1f1b14;
+    --color-surface-variant: #ebe1d6;
+
+    /* --- shadcn semantic-slot aliases — so vendored origin-ui components
+       (bg-primary, text-muted-foreground, border-border, ...) resolve
+       correctly without modification. No new values, just re-exposed
+       vocabulary over the tokens above. --- */
+    --color-foreground: var(--color-on-background);
+    --color-card: var(--color-surface);
+    --color-card-foreground: var(--color-on-surface);
+    --color-popover: var(--color-surface-container-lowest);
+    --color-popover-foreground: var(--color-on-surface);
+    --color-primary-foreground: var(--color-on-primary);
+    --color-secondary: var(--color-secondary-container);
+    --color-secondary-foreground: var(--color-on-secondary-container);
+    --color-muted: var(--color-surface-container);
+    --color-muted-foreground: var(--color-on-surface-variant);
+    --color-accent: var(--color-surface-container-high);
+    --color-accent-foreground: var(--color-on-surface);
+    --color-destructive: var(--color-error);
+    --color-destructive-foreground: var(--color-on-error);
+    --color-border: var(--color-outline-variant);
+    --color-input: var(--color-outline-variant);
+    --color-ring: var(--color-primary);
+    --color-sidebar: var(--color-surface-container-low);
+    --color-sidebar-foreground: var(--color-on-surface);
+    --color-sidebar-primary: var(--color-primary);
+    --color-sidebar-primary-foreground: var(--color-on-primary);
+    --color-sidebar-accent: var(--color-surface-container-high);
+    --color-sidebar-accent-foreground: var(--color-on-surface);
+    --color-sidebar-border: var(--color-outline-variant);
+    --color-sidebar-ring: var(--color-primary);
+
+    /* --- Semantic status color not covered by DESIGN.md's brand palette (which
+       only defines "error"). Vendored components (e.g. the password strength
+       indicator) need a positive/valid state color; using the same value the
+       origin-ui_web design system itself uses for "success" keeps this
+       consistent with the rest of the Origin UI family rather than inventing
+       an arbitrary one. --- */
+    --color-success: hsl(160 84% 39%);
+
+    /* --- Typography — Space Grotesk everywhere, per DESIGN.md --- */
+    --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+    /* --- DESIGN.md's named type scale (text-headline-xl, text-label-caps, ...),
+       additive to Tailwind's default text-sm/base/lg/... scale that vendored
+       components already use. --- */
+    --text-headline-xl: 48px;
+    --text-headline-xl--line-height: 1.1;
+    --text-headline-xl--letter-spacing: -0.02em;
+    --text-headline-xl--font-weight: 700;
+
+    --text-headline-lg: 32px;
+    --text-headline-lg--line-height: 1.2;
+    --text-headline-lg--letter-spacing: -0.01em;
+    --text-headline-lg--font-weight: 600;
+
+    --text-headline-lg-mobile: 24px;
+    --text-headline-lg-mobile--line-height: 1.2;
+    --text-headline-lg-mobile--font-weight: 600;
+
+    --text-title-md: 20px;
+    --text-title-md--line-height: 1.4;
+    --text-title-md--font-weight: 600;
+
+    --text-body-base: 16px;
+    --text-body-base--line-height: 1.6;
+    --text-body-base--font-weight: 400;
+
+    --text-body-sm: 14px;
+    --text-body-sm--line-height: 1.5;
+    --text-body-sm--font-weight: 400;
+
+    --text-label-caps: 12px;
+    --text-label-caps--line-height: 1;
+    --text-label-caps--letter-spacing: 0.05em;
+    --text-label-caps--font-weight: 700;
+
+    /* --- Radii — DESIGN.md's "Soft-Geometric" scale (10px standard /
+       14px containers / 18px dialogs), calibrated onto Tailwind's core
+       radius scale so vendored rounded-lg/xl/2xl usage lands correctly
+       without modification. --- */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 14px;
+    --radius-2xl: 18px;
+    --radius-3xl: 24px;
+
+    /* --- DESIGN.md's named spacing scale, additive to Tailwind's default
+       numeric spacing scale (p-4, gap-2, ...) that vendored components use. --- */
+    --spacing-base: 4px;
+    --spacing-container-margin: 24px;
+    --spacing-gutter: 16px;
+    --spacing-stack-sm: 8px;
+    --spacing-stack-md: 16px;
+    --spacing-stack-lg: 32px;
+    --spacing-section-padding: 64px;
 }
 
-body {
-    margin: 0;
-    font-family:
-        system-ui,
-        -apple-system,
-        "Segoe UI",
-        Roboto,
-        sans-serif;
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans;
+    }
+
+    /* Respect the OS-level motion preference across every animation/transition
+       added for the landing page (and anywhere else in the app) — collapses
+       durations to effectively-instant rather than disabling them outright, so
+       state changes (e.g. a scroll-reveal's opacity) still resolve correctly. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
 }
