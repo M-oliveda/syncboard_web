@@ -29,22 +29,32 @@ non-goals, in addition to the stack-specific coding conventions and best practic
 further below. `CLAUDE.md` is a symlink to this file (so Claude Code's auto-loading
 still finds it); there is no second copy to keep in sync.
 
-**Current state:** Phase 0 (project scaffolding & testing infra) and Phase 1 (static
-board UI, marketing & legal pages) are complete — all boxes in `MASTERPLAN.md` §13 Phase
-0 and Phase 1 are checked. Tailwind v4 + `origin-ui` (vendored unmodified from the
-sibling `origin-ui_web` repo, per its own local sourcing convention) are wired in
-`src/index.css`; TanStack Router is set up file-based under `src/routes/`; all seven
-Phase 1 pages exist against static/mock data (`src/lib/mock-*.ts`) — Landing, Login/
-Register/Forgot Password, Terms/Privacy, Dashboard, Active Board, Product Roadmap, and
-the Card Detail modal (route-driven via `?card=` on `/app/boards/$boardId`).
-`src/App.tsx` now renders `RouterProvider`, not a placeholder. **Still no data fetching,
-drag-and-drop, real-time, or auth** — `/app/*` has no `beforeLoad` guard yet, and
-nothing talks to `syncboard_api`; those are Phases 2–6. Treat `README.md`/
-`MASTERPLAN.md` as the target contract for those later phases, not a description of what
-exists yet — check the filesystem before assuming a hook/query/socket integration is
-present beyond what's listed above. The sibling `syncboard_api` repo (fully scaffolded)
-is the reference for what "done" looks like for the _backend_ tooling level this project
-should converge on.
+**Current state:** Phase 0 (scaffolding), Phase 1 (static board UI), Phase 2 (REST
+integration), and Phase 6 (auth & protected routing) are complete — all boxes in
+`MASTERPLAN.md` §13 for those phases are checked (Phase 6 was pulled forward ahead of
+Phases 3–5 as a Phase 2 prerequisite; see the note there). Workspaces, boards, lists,
+and cards are fetched and mutated through TanStack Query hooks in `src/hooks/`
+(`useWorkspacesQuery`, `useBoardsQuery`, `useBoardQuery`, `useListMutations`,
+`useCardMutations`, `useMemberMutations`) talking to `syncboard_api` via the Axios
+instance in `src/lib/api.ts`; `src/lib/api-mappers.ts` converts backend DTOs
+(`src/types/api.ts`) into the existing UI-facing types so presentational components
+didn't need to change shape. Login/register/forgot-password/reset-password
+(`src/components/auth/`) are wired to the real `/auth/*` endpoints, the access token
+lives in the module-level store `src/lib/auth-session.ts` (never `localStorage`), and
+`/app`'s `beforeLoad` (`src/routes/app/route.tsx`) attempts a silent
+`POST /auth/refresh` before redirecting to `/login`. Logout lives in the sidebar's
+account menu. `src/lib/mock-board.ts`/`mock-workspace.ts` are gone — superseded by real
+data; `src/lib/mock-roadmap.ts` and `mock-card-detail.ts` are still in active use
+(Roadmap stays a static demo board by design, and the card-detail Activity feed stays
+mock — see MASTERPLAN §5.3/§13 Phase 2 for why). **Still no drag-and-drop or real-time**
+— board/list/card `order` is set once at creation and never changed by the UI, and
+nothing talks to Socket.io yet; those are Phases 4–5. Treat `README.md`/`MASTERPLAN.md`
+as the target contract for those later phases, not a description of what exists yet —
+check the filesystem before assuming a hook/query/socket integration is present beyond
+what's listed above. The sibling `syncboard_api` repo (fully scaffolded) is the
+reference for what "done" looks like for the _backend_ tooling level this project should
+converge on; as of this phase it also documents its refresh-token cookie handling as
+implemented rather than aspirational (`api/CLAUDE.md`).
 
 ## Mandatory: Generate a Coding Plan First
 

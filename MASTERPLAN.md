@@ -214,17 +214,18 @@ tokens. Don't introduce ad hoc colors, fonts, or radii outside this token set.
 
 ## 5. Routes & Pages
 
-| Route                  | Type            | Component / Purpose                                    |
-| ---------------------- | --------------- | ------------------------------------------------------ |
-| `/`                    | Public          | Landing page — pitch, feature highlights, animated CTA |
-| `/login`               | Public (unauth) | Login form                                             |
-| `/register`            | Public (unauth) | Registration form                                      |
-| `/forgot-password`     | Public (unauth) | Password-reset trigger                                 |
-| `/terms`               | Public          | Terms of Service (static content)                      |
-| `/privacy`             | Public          | Privacy Policy (static content)                        |
-| `/roadmap`             | Public          | Product Roadmap — example board, static demo data      |
-| `/app`                 | Protected       | Home app shell: Workspace sidebar + Board grid         |
-| `/app/boards/:boardId` | Protected       | Active board — the Kanban canvas                       |
+| Route                  | Type            | Component / Purpose                                        |
+| ---------------------- | --------------- | ---------------------------------------------------------- |
+| `/`                    | Public          | Landing page — pitch, feature highlights, animated CTA     |
+| `/login`               | Public (unauth) | Login form                                                 |
+| `/register`            | Public (unauth) | Registration form                                          |
+| `/forgot-password`     | Public (unauth) | Password-reset trigger                                     |
+| `/reset-password`      | Public (unauth) | Completes a password reset; `?token=` from the reset email |
+| `/terms`               | Public          | Terms of Service (static content)                          |
+| `/privacy`             | Public          | Privacy Policy (static content)                            |
+| `/roadmap`             | Public          | Product Roadmap — example board, static demo data          |
+| `/app`                 | Protected       | Home app shell: Workspace sidebar + Board grid             |
+| `/app/boards/:boardId` | Protected       | Active board — the Kanban canvas                           |
 
 ### 5.1 Protected Route Guarding
 
@@ -255,12 +256,15 @@ flash-of-protected-content before redirect.
 Opens as an overlay when a card is clicked (route-driven, e.g.
 `/app/boards/:boardId?card=:cardId`, so it's deep-linkable and shareable):
 
-- Rich-text editor for the description
-- Checklist with a progress bar
-- Chat-like activity feed ("Mauricio moved this card to Done") — paginated, loading
-  older entries on scroll rather than fetching the full history at once, mirroring the
-  API's paginated `GET /cards/:cardId/activity`
-  ([`api/README.md` §Collection Query Parameters](../api/README.md#collection-query-parameters))
+- Rich-text editor for the description — wired to `PATCH /cards/:cardId` (Phase 2)
+- Checklist with a progress bar — wired to `PATCH /cards/:cardId` (Phase 2); the API
+  models it as a flat `{ text, done }[]` on the card with no per-item id, so items are
+  addressed by array index and every toggle/add replaces the whole array
+- Chat-like activity feed ("Mauricio moved this card to Done") — **still mock data**;
+  `GET /cards/:cardId/activity` is documented in `api/README.md` but has no
+  model/service/route implemented yet (see `api/MASTERPLAN.md` §6.3). Paginated, loading
+  older entries on scroll rather than fetching the full history at once, is the target
+  design once that endpoint exists.
 
 ---
 
@@ -315,12 +319,12 @@ to test with plain props.
 
 ## 7. State Management
 
-| State category                                   | Tool                                            | Rationale                                                           |
-| ------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------- |
-| **Server state (boards/lists/cards)**            | TanStack Query                                  | Caching, background refetch, and the socket-patch integration point |
-| **Auth session**                                 | TanStack Query (`me` query) + Axios interceptor | Access token refresh is transparent to feature code                 |
-| **Ephemeral UI state (open modal, active drag)** | Local component state / lightweight store       | No need for global state outside server data                        |
-| **URL state (open card, filters)**               | TanStack Router search params                   | Deep-linkable, shareable, back-button friendly                      |
+| State category                                   | Tool                                                           | Rationale                                                                                                                                            |
+| ------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Server state (boards/lists/cards)**            | TanStack Query                                                 | Caching, background refetch, and the socket-patch integration point                                                                                  |
+| **Auth session**                                 | Module-level store (`lib/auth-session.ts`) + Axios interceptor | There's no `/auth/me` endpoint to back a real query — the in-memory access token is the only source of truth; refresh is transparent to feature code |
+| **Ephemeral UI state (open modal, active drag)** | Local component state / lightweight store                      | No need for global state outside server data                                                                                                         |
+| **URL state (open card, filters)**               | TanStack Router search params                                  | Deep-linkable, shareable, back-button friendly                                                                                                       |
 
 No separate global client-state library is introduced — TanStack Query covers server
 state, and UI state that doesn't need to survive a route change stays local to the
@@ -404,10 +408,15 @@ in-progress local interactions (e.g. an open modal, an in-flight drag).
 
 ### 9.3 Input Handling
 
-- Rich-text editor output is sanitized before rendering elsewhere (e.g. activity feed
-  previews) to prevent stored-XSS via card descriptions.
-- All form inputs validated client-side (mirroring the backend's Zod schemas) for fast
-  feedback, with the backend remaining the authoritative validator.
+- The card description editor (`RichTextEditor.tsx`) renders its saved value as plain
+  JSX text (React's default escaping), not `dangerouslySetInnerHTML` — its toolbar is
+  currently decorative and doesn't produce real HTML, so there's no raw-HTML sink to
+  sanitize yet. This becomes a real requirement (DOMPurify or equivalent, at the render
+  site) the moment the editor — or anything else, e.g. a future comment feature — starts
+  rendering rich text as actual HTML.
+- All form inputs validated client-side (mirroring the backend's Zod schemas — see
+  `src/lib/auth-schemas.ts`) for fast feedback, with the backend remaining the
+  authoritative validator.
 
 ---
 
@@ -654,11 +663,32 @@ environment via `docker/build-push-action`, matching `sentient-archive/web`'s
 
 ### Phase 2 — REST Integration
 
-- [ ] Wire TanStack Query to `syncboard_api`'s REST endpoints
-- [ ] Board, list, and card CRUD work end-to-end, with normal (non-optimistic)
-      loading/error states
-- [ ] Members panel wired to the `/workspaces/:workspaceId/members` endpoints
-      (invite/add, change role, remove)
+Phase 6 (auth) was pulled forward as a prerequisite — every workspace/board/list/card
+endpoint requires a Bearer JWT, so Phase 2's REST calls weren't testable against the
+real API without a working login first. See Phase 6 below, done first in the same branch
+of work.
+
+- [x] Wire TanStack Query to `syncboard_api`'s REST endpoints
+- [x] Board, list, and card CRUD work end-to-end, with normal (non-optimistic)
+      loading/error states — rename/reorder (`order`, `listId`) stays Phase 4's job;
+      board/list rename UI doesn't exist yet either (create/read/delete only for those
+      two, full CRUD for cards)
+- [x] Members panel wired to the `/workspaces/:workspaceId/members` endpoints (change
+      role, remove). **Invite-by-email is not wired** — `POST /members` takes a
+      `userId`, not an email, and the API has no user-lookup-by-email endpoint; the
+      invite row is disabled with explanatory copy instead of faking the mock behavior
+
+Known gaps carried forward, not fixed silently:
+
+- The card detail modal's Activity feed stays on mock data — no `Activity`
+  model/service/route exists on the API yet (§5.3 above)
+- Card `assignees` render as an empty list — the API stores unpopulated `ObjectId`s and
+  the "Add assignee" affordance was already inert in the Phase 1 mock
+- Card labels lose per-label color customization — the API stores raw label strings, not
+  `{ id, color }` records, so colors are derived deterministically from the label text
+  instead of being persisted
+- `useCurrentWorkspace()` picks the first workspace returned by `GET /workspaces` —
+  there's no workspace switcher UI yet, so multi-workspace users only ever see one
 
 ### Phase 3 — CI/CD & Deployment Environments
 
@@ -693,5 +723,14 @@ that need to ship through it, not after, mirroring the approach in
 
 ### Phase 6 — Auth & Polish
 
-- [ ] Full auth flow (login/register/forgot-password)
-- [ ] Protected routing
+Built ahead of Phase 2 (see note there) rather than after Phases 3–5, since Phase 2's
+REST calls need a real session to test against the live API.
+
+- [x] Full auth flow (login/register/forgot-password/reset-password) — the reset flow
+      needed a `/reset-password` route not in the original §5 table, added there
+- [x] Protected routing — `/app`'s `beforeLoad` attempts one silent `POST /auth/refresh`
+      (cookie-carried) when no in-memory access token is present, redirecting to
+      `/login` only if that also fails, so a hard reload doesn't bounce an
+      otherwise-valid session
+- [x] Logout — wired into the sidebar's account menu (not in the original Phase 1 mock,
+      which had no way to log out at all once auth existed)
