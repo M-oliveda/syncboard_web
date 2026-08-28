@@ -25,14 +25,22 @@ const TOOLBAR_BUTTONS = [
 export interface RichTextEditorProps {
     initialValue: string;
     placeholder?: string;
+    onSave?: (value: string) => void;
 }
 
-export function RichTextEditor({ initialValue, placeholder }: RichTextEditorProps) {
+export function RichTextEditor({
+    initialValue,
+    placeholder,
+    onSave,
+}: RichTextEditorProps) {
     const [value, setValue] = useState(initialValue);
     const [draft, setDraft] = useState(initialValue);
     const [isEditing, setIsEditing] = useState(false);
 
     if (!isEditing) {
+        // Rendered as plain JSX text (React escapes it) — the toolbar above is
+        // decorative and doesn't produce HTML, so there's no raw-HTML sink here that
+        // would need sanitizing before render.
         return (
             <div>
                 {value ? (
@@ -89,6 +97,7 @@ export function RichTextEditor({ initialValue, placeholder }: RichTextEditorProp
                     onClick={() => {
                         setValue(draft);
                         setIsEditing(false);
+                        onSave?.(draft);
                     }}
                 >
                     Save

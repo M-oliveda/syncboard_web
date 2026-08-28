@@ -8,6 +8,7 @@ import {
     Share2,
     Subscript,
     Tag,
+    Trash2,
     User,
     X,
 } from "lucide-react";
@@ -23,8 +24,16 @@ import {
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useDeleteCardMutation, useUpdateCardMutation } from "@/hooks/useCardMutations";
 import { mockCardDetail } from "@/lib/mock-card-detail";
+import { cn } from "@/lib/utils";
+import type { ChecklistItem } from "@/types/card-detail";
 import type { BoardCard, LabelColor } from "@/types/board";
 
 const LABEL_COLORS: Record<LabelColor, string> = {
@@ -37,12 +46,12 @@ const LABEL_COLORS: Record<LabelColor, string> = {
 const HEADER_ACTIONS = [
     { icon: Eye, label: "Watch" },
     { icon: Share2, label: "Share" },
-    { icon: MoreHorizontal, label: "More actions" },
 ];
 
 export interface CardDetailModalProps {
     card: BoardCard;
     listName: string;
+    boardId: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -50,13 +59,51 @@ export interface CardDetailModalProps {
 export function CardDetailModal({
     card,
     listName,
+    boardId,
     open,
     onOpenChange,
 }: CardDetailModalProps) {
     const [labels, setLabels] = useState(card.labels ?? []);
+    const [title, setTitle] = useState(card.title);
+    const updateCardMutation = useUpdateCardMutation(boardId);
+    const deleteCardMutation = useDeleteCardMutation(boardId);
+
+    function saveTitle() {
+        const trimmed = title.trim();
+        if (!trimmed || trimmed === card.title) return;
+        updateCardMutation.mutate({ cardId: card.id, title: trimmed });
+    }
+
+    function saveDescription(description: string) {
+        updateCardMutation.mutate({ cardId: card.id, description });
+    }
+
+    function saveChecklist(items: ChecklistItem[]) {
+        updateCardMutation.mutate({
+            cardId: card.id,
+            checklist: items.map((item) => ({
+                text: item.label,
+                done: item.completed,
+            })),
+        });
+    }
 
     function removeLabel(id: string) {
-        setLabels((current) => current.filter((label) => label.id !== id));
+        const next = labels.filter((label) => label.id !== id);
+        setLabels(next);
+        updateCardMutation.mutate({
+            cardId: card.id,
+            labels: next.map((label) => label.name),
+        });
+    }
+
+    async function deleteCard() {
+        try {
+            await deleteCardMutation.mutateAsync(card.id);
+        } catch {
+            return;
+        }
+        onOpenChange(false);
     }
 
     return (
@@ -88,6 +135,28 @@ export function CardDetailModal({
                                 <Icon className="size-5" aria-hidden="true" />
                             </button>
                         ))}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={
+                                    <button
+                                        type="button"
+                                        title="More actions"
+                                        className="text-on-surface-variant hover:bg-surface-container-highest flex size-8 items-center justify-center rounded-lg transition-colors"
+                                    />
+                                }
+                            >
+                                <MoreHorizontal className="size-5" aria-hidden="true" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => void deleteCard()}
+                                >
+                                    <Trash2 className="size-4" aria-hidden="true" />
+                                    Delete card
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <div
                             className="bg-outline-variant/50 mx-1 h-5 w-px"
                             aria-hidden="true"
@@ -104,7 +173,9 @@ export function CardDetailModal({
                 <div className="p-container-margin gap-stack-lg flex flex-1 flex-col overflow-y-auto lg:flex-row">
                     <div className="gap-stack-lg flex min-w-0 flex-1 flex-col">
                         <input
-                            defaultValue={card.title}
+                            value={title}
+                            onChange={(event) => setTitle(event.target.value)}
+                            onBlur={saveTitle}
                             className="text-headline-lg-mobile sm:text-headline-lg text-on-surface focus-visible:bg-surface-container-low -ml-2 w-full rounded border-0 bg-transparent p-0 px-2 focus:outline-none"
                         />
 
@@ -118,7 +189,8 @@ export function CardDetailModal({
                             </div>
                             <div className="ml-7">
                                 <RichTextEditor
-                                    initialValue={mockCardDetail.description}
+                                    initialValue={card.description ?? ""}
+                                    onSave={saveDescription}
                                 />
                             </div>
                         </section>
@@ -129,12 +201,13 @@ export function CardDetailModal({
                                     className="text-on-surface-variant size-5"
                                     aria-hidden="true"
                                 />
-                                <h3 className="text-title-md">
-                                    {mockCardDetail.checklistName}
-                                </h3>
+                                <h3 className="text-title-md">Checklist</h3>
                             </div>
                             <div className="ml-7">
-                                <Checklist items={mockCardDetail.checklist} />
+                                <Checklist
+                                    items={card.checklist ?? []}
+                                    onChange={saveChecklist}
+                                />
                             </div>
                         </section>
 
@@ -147,6 +220,8 @@ export function CardDetailModal({
                                 <h3 className="text-title-md">Activity</h3>
                             </div>
                             <div className="ml-7">
+                                {/* No Activity model/service/route exists on the API
+                                yet — stays on mock data until that lands. */}
                                 <ActivityFeed entries={mockCardDetail.activity} />
                             </div>
                         </section>
