@@ -1,21 +1,7 @@
-import {
-    RouterProvider,
-    createMemoryHistory,
-    createRouter,
-} from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { routeTree } from "@/routeTree.gen";
-
-function renderAtPath(path: string) {
-    const router = createRouter({
-        routeTree,
-        history: createMemoryHistory({ initialEntries: [path] }),
-    });
-
-    render(<RouterProvider router={router} />);
-}
+import { renderAtPath } from "../test-utils/renderAtPath";
 
 describe("route tree smoke test", () => {
     it.each([

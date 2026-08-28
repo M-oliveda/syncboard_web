@@ -1,3 +1,5 @@
+import type { ChecklistItem } from "@/types/card-detail";
+
 /** Colors are DESIGN.md container/on-container token pairs — see Card's LABEL_COLORS map. */
 export type LabelColor = "primary" | "secondary" | "tertiary" | "error";
 
@@ -17,6 +19,9 @@ export interface BoardCard {
     title: string;
     description?: string;
     labels?: CardLabel[];
+    /** Full checklist items — the card-detail modal renders/edits these directly; the
+     * compact card view only shows the checklistTotal/checklistCompleted counts. */
+    checklist?: ChecklistItem[];
     checklistTotal?: number;
     checklistCompleted?: number;
     commentCount?: number;
