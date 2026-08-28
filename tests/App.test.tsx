@@ -4,9 +4,13 @@ import { describe, expect, it } from "vitest";
 import App from "@/App";
 
 describe("App", () => {
-    it("renders the SyncBoard heading", () => {
+    it("renders the router at the current location", async () => {
         render(<App />);
 
-        expect(screen.getByRole("heading", { name: "SyncBoard" })).toBeInTheDocument();
+        expect(
+            await screen.findByRole("heading", {
+                name: "Kanban boards that move as fast as your team.",
+            }),
+        ).toBeInTheDocument();
     });
 });
