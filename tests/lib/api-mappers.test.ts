@@ -24,6 +24,7 @@ const baseCard: ApiCard = {
 describe("mapApiCardToBoardCard", () => {
     it("leaves progress undefined for an empty checklist", () => {
         const card = mapApiCardToBoardCard(baseCard);
+        expect(card.order).toBe(1);
         expect(card.checklistTotal).toBe(0);
         expect(card.progress).toBeUndefined();
     });
@@ -64,6 +65,16 @@ describe("mapApiListToBoardList", () => {
         expect(result.name).toBe("To Do");
         expect(result.cards).toHaveLength(1);
         expect(result.cards[0]?.id).toBe("card-1");
+    });
+
+    it("sorts cards by order and carries the list's own order through", () => {
+        const list: ApiList = { _id: "list-1", boardId: "board-1", title: "To Do", order: 3 };
+        const second: ApiCard = { ...baseCard, _id: "card-2", order: 0 };
+
+        const result = mapApiListToBoardList(list, [baseCard, second]);
+
+        expect(result.order).toBe(3);
+        expect(result.cards.map((card) => card.id)).toEqual(["card-2", "card-1"]);
     });
 });
 

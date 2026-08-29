@@ -11,6 +11,7 @@ import { renderWithRouter } from "../../test-utils/renderWithRouter";
 
 const card: BoardCard = {
     id: "c1",
+    order: 0,
     title: "Fix the thing",
     labels: [
         { id: "l1", name: "BUG", color: "error" },
@@ -94,7 +95,7 @@ describe("CardDetailModal", () => {
     it("renders with no labels, assignees, or checklist items", async () => {
         renderWithRouter(
             <CardDetailModal
-                card={{ id: "c2", title: "No extras" }}
+                card={{ id: "c2", order: 0, title: "No extras" }}
                 listName="Backlog"
                 boardId="board-1"
                 open

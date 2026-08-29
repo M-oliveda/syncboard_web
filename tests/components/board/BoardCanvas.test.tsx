@@ -15,8 +15,8 @@ describe("BoardCanvas", () => {
             id: "b1",
             name: "Test Board",
             lists: [
-                { id: "l1", name: "To Do", cards: [] },
-                { id: "l2", name: "Done", cards: [] },
+                { id: "l1", order: 0, name: "To Do", cards: [] },
+                { id: "l2", order: 1, name: "Done", cards: [] },
             ],
         };
 
@@ -36,7 +36,12 @@ describe("BoardCanvas", () => {
             id: "b1",
             name: "Test Board",
             lists: [
-                { id: "l1", name: "To Do", cards: [{ id: "c1", title: "First card" }] },
+                {
+                    id: "l1",
+                    order: 0,
+                    name: "To Do",
+                    cards: [{ id: "c1", order: 0, title: "First card" }],
+                },
             ],
         };
 
@@ -125,7 +130,7 @@ describe("BoardCanvas", () => {
         const board: Board = {
             id: "b1",
             name: "Test Board",
-            lists: [{ id: "l1", name: "To Do", cards: [] }],
+            lists: [{ id: "l1", order: 0, name: "To Do", cards: [] }],
         };
         renderWithRouter(<BoardCanvas board={board} />);
 

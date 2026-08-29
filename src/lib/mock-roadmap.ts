@@ -6,10 +6,12 @@ export const mockRoadmapBoard: Board = {
     lists: [
         {
             id: "to-do",
+            order: 0,
             name: "To Do",
             cards: [
                 {
                     id: "roadmap-1",
+                    order: 0,
                     title: "Implement new user onboarding flow",
                     description:
                         "Design and integrate the multi-step welcome screens for new signups based on the latest designs.",
@@ -24,6 +26,7 @@ export const mockRoadmapBoard: Board = {
                 },
                 {
                     id: "roadmap-2",
+                    order: 1,
                     title: "Competitor analysis for Q3 features",
                     labels: [{ id: "l3", name: "RESEARCH", color: "tertiary" }],
                     assignees: [{ id: "a2", initials: "AK" }],
@@ -32,10 +35,12 @@ export const mockRoadmapBoard: Board = {
         },
         {
             id: "in-progress",
+            order: 1,
             name: "In Progress",
             cards: [
                 {
                     id: "roadmap-3",
+                    order: 0,
                     title: "Refactor authentication service",
                     description:
                         "Migrate from the legacy token system to JWT-based auth with refresh rotation.",
@@ -52,10 +57,12 @@ export const mockRoadmapBoard: Board = {
         },
         {
             id: "done",
+            order: 2,
             name: "Done",
             cards: [
                 {
                     id: "roadmap-4",
+                    order: 0,
                     title: "Update primary navigation layout",
                     completed: true,
                 },

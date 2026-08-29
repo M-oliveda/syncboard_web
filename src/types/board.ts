@@ -16,6 +16,8 @@ export interface CardAssignee {
 
 export interface BoardCard {
     id: string;
+    /** Fractional order within its list — see `src/lib/reorder.ts`. */
+    order: number;
     title: string;
     description?: string;
     labels?: CardLabel[];
@@ -33,6 +35,8 @@ export interface BoardCard {
 
 export interface BoardList {
     id: string;
+    /** Fractional order within its board — see `src/lib/reorder.ts`. */
+    order: number;
     name: string;
     cards: BoardCard[];
 }
