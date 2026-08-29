@@ -1,112 +1,90 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { MembersPanel } from "@/components/workspace/MembersPanel";
-import { mockWorkspaceMembers } from "@/lib/mock-workspace";
+
+import { FIXTURE_WORKSPACE } from "../../mocks/fixtures";
+import { renderWithRouter } from "../../test-utils/renderWithRouter";
 
 describe("MembersPanel", () => {
-    it("opens to show the invite form and the existing member list with role badges", async () => {
+    it("opens to show the disabled invite row and the existing member list with role badges", async () => {
         const user = userEvent.setup();
-        render(<MembersPanel />);
+        renderWithRouter(<MembersPanel workspaceId="workspace-1" />);
 
-        await user.click(screen.getByRole("button", { name: "Members" }));
+        await user.click(await screen.findByRole("button", { name: "Members" }));
 
         expect(await screen.findByText("Workspace members")).toBeInTheDocument();
-        for (const member of mockWorkspaceMembers) {
-            expect(screen.getByText(member.name)).toBeInTheDocument();
+        expect(
+            screen.getByText(/self-service invites aren.t available yet/),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Invite" })).toBeDisabled();
+
+        for (const member of FIXTURE_WORKSPACE.members) {
+            expect(screen.getByText(member.userId.email)).toBeInTheDocument();
         }
         expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Member").length).toBeGreaterThan(0);
     });
 
-    it("does not invite anyone when the email field is submitted empty", async () => {
+    it("changes a member's role via the row menu", async () => {
         const user = userEvent.setup();
-        render(<MembersPanel />);
-
-        await user.click(screen.getByRole("button", { name: "Members" }));
-        await screen.findByText("Workspace members");
-
-        const rowsBefore = screen.getAllByRole("listitem").length;
-        await user.click(screen.getByRole("button", { name: "Invite" }));
-        expect(screen.getAllByRole("listitem")).toHaveLength(rowsBefore);
-    });
-
-    it("invites a new member with the selected role", async () => {
-        const user = userEvent.setup();
-        render(<MembersPanel />);
-
-        await user.click(screen.getByRole("button", { name: "Members" }));
-        await screen.findByText("Workspace members");
-
-        await user.click(screen.getByRole("button", { name: "member" }));
-        await user.click(await screen.findByRole("menuitem", { name: "Member" }));
-
-        await user.click(screen.getByRole("button", { name: "member" }));
-        await user.click(await screen.findByRole("menuitem", { name: "Admin" }));
-
-        await user.type(
-            screen.getByLabelText("Email address to invite"),
-            "new.hire@syncboard.dev",
+        const memberRoleUser = FIXTURE_WORKSPACE.members.find(
+            (m) => m.role === "Member",
         );
-        await user.click(screen.getByRole("button", { name: "Invite" }));
+        if (!memberRoleUser) throw new Error("expected a Member-role fixture member");
 
-        const row = screen.getByText("new.hire@syncboard.dev").closest("li");
-        expect(row).not.toBeNull();
-        expect(within(row as HTMLElement).getByText("Admin")).toBeInTheDocument();
-    });
+        renderWithRouter(<MembersPanel workspaceId="workspace-1" />);
 
-    it("changes a member's role and removes a member via the row menu", async () => {
-        const user = userEvent.setup();
-        render(<MembersPanel />);
-
-        await user.click(screen.getByRole("button", { name: "Members" }));
-        const firstMember = mockWorkspaceMembers[0];
-        if (!firstMember) throw new Error("expected at least one mock member");
-
-        await screen.findByText(firstMember.name);
+        await user.click(await screen.findByRole("button", { name: "Members" }));
+        await screen.findByText(memberRoleUser.userId.email);
 
         await user.click(
-            screen.getByRole("button", { name: `Options for ${firstMember.name}` }),
-        );
-        await user.click(await screen.findByRole("menuitem", { name: "Make member" }));
-
-        const row = screen.getByText(firstMember.name).closest("li");
-        expect(row).not.toBeNull();
-        expect(within(row as HTMLElement).getByText("Member")).toBeInTheDocument();
-
-        await user.click(
-            within(row as HTMLElement).getByRole("button", {
-                name: `Options for ${firstMember.name}`,
+            screen.getByRole("button", {
+                name: `Options for ${memberRoleUser.userId.email.replace(/@.*$/, "")}`,
             }),
         );
+        await user.click(await screen.findByRole("menuitem", { name: "Make admin" }));
+
+        expect(screen.getByText(memberRoleUser.userId.email)).toBeInTheDocument();
+    });
+
+    it("demotes an admin to member via the row menu", async () => {
+        const user = userEvent.setup();
+        const adminUser = FIXTURE_WORKSPACE.members.find((m) => m.role === "Admin");
+        if (!adminUser) throw new Error("expected an Admin-role fixture member");
+        const name = adminUser.userId.email.replace(/@.*$/, "");
+
+        renderWithRouter(<MembersPanel workspaceId="workspace-1" />);
+
+        await user.click(await screen.findByRole("button", { name: "Members" }));
+        await screen.findByText(adminUser.userId.email);
+
+        await user.click(screen.getByRole("button", { name: `Options for ${name}` }));
+        await user.click(await screen.findByRole("menuitem", { name: "Make member" }));
+
+        expect(screen.getByText(adminUser.userId.email)).toBeInTheDocument();
+    });
+
+    it("removes a member via the row menu", async () => {
+        const user = userEvent.setup();
+        const adminUser = FIXTURE_WORKSPACE.members.find((m) => m.role === "Admin");
+        if (!adminUser) throw new Error("expected an Admin-role fixture member");
+        const name = adminUser.userId.email.replace(/@.*$/, "");
+
+        renderWithRouter(<MembersPanel workspaceId="workspace-1" />);
+
+        await user.click(await screen.findByRole("button", { name: "Members" }));
+        await screen.findByText(adminUser.userId.email);
+
+        await user.click(screen.getByRole("button", { name: `Options for ${name}` }));
         await user.click(
             await screen.findByRole("menuitem", { name: "Remove from workspace" }),
         );
 
-        expect(screen.queryByText(firstMember.name)).not.toBeInTheDocument();
-    });
-
-    it("promotes a member to admin via the row menu", async () => {
-        const user = userEvent.setup();
-        render(<MembersPanel />);
-
-        await user.click(screen.getByRole("button", { name: "Members" }));
-        const memberRoleUser = mockWorkspaceMembers.find(
-            (member) => member.role === "member",
-        );
-        if (!memberRoleUser)
-            throw new Error("expected at least one mock member with role member");
-
-        await screen.findByText(memberRoleUser.name);
-
-        await user.click(
-            screen.getByRole("button", { name: `Options for ${memberRoleUser.name}` }),
-        );
-        await user.click(await screen.findByRole("menuitem", { name: "Make admin" }));
-
-        const row = screen.getByText(memberRoleUser.name).closest("li");
-        expect(row).not.toBeNull();
-        expect(within(row as HTMLElement).getByText("Admin")).toBeInTheDocument();
+        expect(
+            screen.queryByRole("menuitem", { name: "Remove from workspace" }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText("Workspace members")).toBeInTheDocument();
     });
 });

@@ -1,8 +1,15 @@
-import { Link } from "@tanstack/react-router";
-import { ChevronsUpDown, LayoutGrid } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronsUpDown, LayoutGrid, LogOut, User } from "lucide-react";
 
 import { Logo } from "@/components/branding/Logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useLogoutMutation } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 export interface SidebarProps {
@@ -10,6 +17,18 @@ export interface SidebarProps {
 }
 
 export function Sidebar({ className }: SidebarProps) {
+    const navigate = useNavigate();
+    const logoutMutation = useLogoutMutation();
+
+    async function handleLogout() {
+        try {
+            await logoutMutation.mutateAsync();
+        } catch {
+            // authSession is already cleared via onSettled regardless of outcome
+        }
+        await navigate({ to: "/login" });
+    }
+
     return (
         <aside
             className={cn(
@@ -50,18 +69,33 @@ export function Sidebar({ className }: SidebarProps) {
                 </Link>
             </nav>
 
-            <div className="p-stack-md border-outline-variant/30 gap-stack-md flex items-center border-t">
-                <Avatar size="sm">
-                    <AvatarFallback className="bg-primary text-on-primary text-xs">
-                        AR
-                    </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                    <p className="text-body-sm text-on-surface truncate font-medium">
-                        Alex Rivera
-                    </p>
-                </div>
-            </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger
+                    render={
+                        <button
+                            type="button"
+                            className="p-stack-md border-outline-variant/30 gap-stack-md hover:bg-surface-container-highest flex items-center border-t text-left transition-colors"
+                        />
+                    }
+                >
+                    <Avatar size="sm">
+                        <AvatarFallback className="bg-primary text-on-primary text-xs">
+                            <User className="size-4" aria-hidden="true" />
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-body-sm text-on-surface truncate font-medium">
+                            Account
+                        </p>
+                    </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="top">
+                    <DropdownMenuItem onClick={() => void handleLogout()}>
+                        <LogOut className="size-4" aria-hidden="true" />
+                        Log out
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </aside>
     );
 }

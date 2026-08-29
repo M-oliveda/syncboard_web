@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,22 +10,27 @@ import type { ChecklistItem } from "@/types/card-detail";
 
 export interface ChecklistProps {
     items: ChecklistItem[];
+    onChange?: (items: ChecklistItem[]) => void;
 }
 
-export function Checklist({ items: initialItems }: ChecklistProps) {
+export function Checklist({ items: initialItems, onChange }: ChecklistProps) {
     const [items, setItems] = useState(initialItems);
     const [newItem, setNewItem] = useState("");
+
+    useEffect(() => {
+        setItems(initialItems);
+    }, [initialItems]);
 
     const completedCount = items.filter((item) => item.completed).length;
     const progress =
         items.length === 0 ? 0 : Math.round((completedCount / items.length) * 100);
 
     function toggleItem(id: string) {
-        setItems((current) =>
-            current.map((item) =>
-                item.id === id ? { ...item, completed: !item.completed } : item,
-            ),
+        const next = items.map((item) =>
+            item.id === id ? { ...item, completed: !item.completed } : item,
         );
+        setItems(next);
+        onChange?.(next);
     }
 
     function addItem(event: React.FormEvent) {
@@ -33,10 +38,12 @@ export function Checklist({ items: initialItems }: ChecklistProps) {
         const label = newItem.trim();
         if (!label) return;
 
-        setItems((current) => [
-            ...current,
-            { id: `item-${current.length}-${Date.now()}`, label, completed: false },
-        ]);
+        const next = [
+            ...items,
+            { id: `item-${items.length}-${Date.now()}`, label, completed: false },
+        ];
+        setItems(next);
+        onChange?.(next);
         setNewItem("");
     }
 

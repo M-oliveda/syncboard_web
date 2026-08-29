@@ -1,71 +1,51 @@
-import {
-    RouterProvider,
-    createMemoryHistory,
-    createRouter,
-} from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
-import { mockActiveBoard, mockPresence } from "@/lib/mock-board";
-import { routeTree } from "@/routeTree.gen";
+import { FIXTURE_BOARDS, FIXTURE_CARDS, FIXTURE_LISTS } from "../../mocks/fixtures";
+import { server } from "../../mocks/server";
+import { renderAtPath } from "../../test-utils/renderAtPath";
 
-function renderAtPath(path: string) {
-    const router = createRouter({
-        routeTree,
-        history: createMemoryHistory({ initialEntries: [path] }),
-    });
-
-    render(<RouterProvider router={router} />);
-    return router;
+const board = FIXTURE_BOARDS[0];
+const firstList = FIXTURE_LISTS[0];
+const firstCard = FIXTURE_CARDS[0];
+if (!board || !firstList || !firstCard) {
+    throw new Error("expected fixture board/list/card");
 }
 
 describe("ActiveBoardPage", () => {
-    it("renders the board name, presence, and every list", async () => {
-        renderAtPath("/app/boards/demo-board");
+    it("renders the board name and every list", async () => {
+        renderAtPath(`/app/boards/${board._id}`);
 
         expect(
-            await screen.findByRole("heading", { name: mockActiveBoard.name }),
+            await screen.findByRole("heading", { name: board.title }),
         ).toBeInTheDocument();
 
-        for (const list of mockActiveBoard.lists) {
+        for (const list of FIXTURE_LISTS) {
             expect(
-                screen.getByRole("heading", { name: list.name }),
+                screen.getByRole("heading", { name: list.title }),
             ).toBeInTheDocument();
         }
-
-        expect(
-            screen.getByLabelText(`${mockPresence.length} people viewing this board`),
-        ).toBeInTheDocument();
     });
 
     it("opens the card detail modal from the ?card= search param", async () => {
-        const firstList = mockActiveBoard.lists[0];
-        const firstCard = firstList?.cards[0];
-        if (!firstList || !firstCard)
-            throw new Error("expected at least one list with a card");
-
-        renderAtPath(`/app/boards/demo-board?card=${firstCard.id}`);
+        renderAtPath(`/app/boards/${board._id}?card=${firstCard._id}`);
 
         expect(await screen.findByDisplayValue(firstCard.title)).toBeInTheDocument();
     });
 
     it("opens a card on click and closes it back to no search param", async () => {
         const user = userEvent.setup();
-        const firstList = mockActiveBoard.lists[0];
-        const firstCard = firstList?.cards[0];
-        if (!firstList || !firstCard)
-            throw new Error("expected at least one list with a card");
-
-        const router = renderAtPath("/app/boards/demo-board");
-        await screen.findByRole("heading", { name: mockActiveBoard.name });
+        const router = renderAtPath(`/app/boards/${board._id}`);
+        await screen.findByRole("heading", { name: board.title });
 
         await user.click(
             screen.getByRole("button", { name: new RegExp(firstCard.title) }),
         );
 
         expect(await screen.findByDisplayValue(firstCard.title)).toBeInTheDocument();
-        expect(router.state.location.search).toEqual({ card: firstCard.id });
+        expect(router.state.location.search).toEqual({ card: firstCard._id });
 
         await user.click(screen.getByTitle("Close modal"));
 
@@ -74,9 +54,17 @@ describe("ActiveBoardPage", () => {
     });
 
     it("renders no modal when the card id in the URL does not match any card", async () => {
-        renderAtPath("/app/boards/demo-board?card=does-not-exist");
+        renderAtPath(`/app/boards/${board._id}?card=does-not-exist`);
 
-        await screen.findByRole("heading", { name: mockActiveBoard.name });
+        await screen.findByRole("heading", { name: board.title });
         expect(screen.queryByText("Description")).not.toBeInTheDocument();
+    });
+
+    it("shows an error state when the board fails to load", async () => {
+        server.use(http.get("*/boards/:boardId", () => HttpResponse.error()));
+
+        renderAtPath(`/app/boards/${board._id}`);
+
+        expect(await screen.findByText("Couldn't load this board")).toBeInTheDocument();
     });
 });
