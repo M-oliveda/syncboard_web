@@ -1,7 +1,10 @@
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { CheckCircle2, MessageCircle, SquareCheck } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import type { SortableItemData } from "@/lib/reorder";
 import { cn } from "@/lib/utils";
 import type { BoardCard, LabelColor } from "@/types/board";
 
@@ -14,6 +17,13 @@ const LABEL_COLORS: Record<LabelColor, string> = {
 
 export interface CardItemProps {
     card: BoardCard;
+    /** The containing list's id, carried in the sortable's `data` so `onDragEnd` can
+     * tell which list a card is being dragged out of/into. Always the real list id,
+     * even when `dragDisabled` — only the drag interaction itself is turned off. */
+    listId: string;
+    /** True for read-only contexts (the static Roadmap demo board) — disables the
+     * drag interaction without changing anything else about how the card renders. */
+    dragDisabled?: boolean;
     onClick?: () => void;
 }
 
@@ -33,12 +43,33 @@ function getInteractiveCardProps(onClick: (() => void) | undefined) {
     };
 }
 
-export function CardItem({ card, onClick }: CardItemProps) {
+export function CardItem({ card, listId, dragDisabled, onClick }: CardItemProps) {
     const interactiveProps = getInteractiveCardProps(onClick);
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+        useSortable({
+            id: card.id,
+            data: { type: "card", listId } satisfies SortableItemData,
+            disabled: dragDisabled,
+        });
+    const dragStyle: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        /* v8 ignore next -- @preserve: isDragging only flips true mid a real pointer
+         * drag gesture, which jsdom can't simulate; covered by e2e/board-drag.spec.ts */
+        opacity: isDragging ? 0.4 : undefined,
+    };
+    /* dnd-kit's own attributes always include `role="button"`/`tabIndex` (even when
+     * `disabled`, just with `aria-disabled="true"`) — only spread them when dragging
+     * is actually possible, so the read-only Roadmap board doesn't render a
+     * keyboard-focusable "button" that does nothing. */
+    const dragProps = dragDisabled ? {} : { ...attributes, ...listeners };
 
     if (card.completed) {
         return (
             <div
+                ref={setNodeRef}
+                style={dragStyle}
+                {...dragProps}
                 {...interactiveProps}
                 className={cn(
                     "bg-surface/50 p-stack-md border-surface-container-highest rounded-lg border shadow-sm",
@@ -61,6 +92,9 @@ export function CardItem({ card, onClick }: CardItemProps) {
 
     return (
         <div
+            ref={setNodeRef}
+            style={dragStyle}
+            {...dragProps}
             {...interactiveProps}
             className={cn(
                 "bg-surface p-stack-md border-surface-container-highest rounded-lg border shadow-sm transition-shadow hover:shadow-md",

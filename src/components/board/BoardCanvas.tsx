@@ -1,7 +1,10 @@
+import { DndContext, closestCenter } from "@dnd-kit/core";
+import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import { List } from "@/components/board/List";
+import { useBoardDragAndDrop } from "@/hooks/useBoardDragAndDrop";
 import { useCreateListMutation } from "@/hooks/useListMutations";
 import type { Board } from "@/types/board";
 
@@ -17,6 +20,7 @@ export function BoardCanvas({ board, boardId, onCardClick }: BoardCanvasProps) {
     const [isAddingColumn, setIsAddingColumn] = useState(false);
     const [columnTitle, setColumnTitle] = useState("");
     const createListMutation = useCreateListMutation(boardId);
+    const { sensors, handleDragEnd } = useBoardDragAndDrop(board, boardId);
 
     async function handleAddColumn(event: React.FormEvent) {
         event.preventDefault();
@@ -34,59 +38,72 @@ export function BoardCanvas({ board, boardId, onCardClick }: BoardCanvasProps) {
 
     return (
         <div className="bg-background flex-1 overflow-x-auto overflow-y-hidden">
-            <div className="p-stack-lg gap-stack-lg flex h-full min-w-max items-start">
-                {board.lists.map((list) => (
-                    <List
-                        key={list.id}
-                        boardId={boardId}
-                        list={list}
-                        onCardClick={onCardClick}
-                    />
-                ))}
-
-                {boardId &&
-                    (isAddingColumn ? (
-                        <form
-                            onSubmit={(event) => void handleAddColumn(event)}
-                            className="bg-surface-container-low gap-stack-sm flex w-80 shrink-0 flex-col rounded-xl p-3 shadow-sm"
-                        >
-                            <input
-                                autoFocus
-                                value={columnTitle}
-                                onChange={(event) => setColumnTitle(event.target.value)}
-                                placeholder="List name"
-                                className="text-body-base text-on-surface w-full rounded border-0 bg-transparent p-0 focus:outline-none"
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <div className="p-stack-lg gap-stack-lg flex h-full min-w-max items-start">
+                    <SortableContext
+                        items={board.lists.map((list) => list.id)}
+                        strategy={horizontalListSortingStrategy}
+                    >
+                        {board.lists.map((list) => (
+                            <List
+                                key={list.id}
+                                boardId={boardId}
+                                list={list}
+                                onCardClick={onCardClick}
                             />
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="submit"
-                                    disabled={createListMutation.isPending}
-                                    className="bg-primary text-on-primary text-body-sm rounded-lg px-3 py-1.5"
-                                >
-                                    {createListMutation.isPending
-                                        ? "Adding…"
-                                        : "Add column"}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAddingColumn(false)}
-                                    className="text-on-surface-variant text-body-sm px-2"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() => setIsAddingColumn(true)}
-                            className="border-outline-variant/50 hover:bg-surface-container-low hover:border-outline/50 text-on-surface-variant text-label-caps flex h-24 w-80 shrink-0 items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-colors"
-                        >
-                            <Plus className="size-4" aria-hidden="true" />
-                            Add column
-                        </button>
-                    ))}
-            </div>
+                        ))}
+                    </SortableContext>
+
+                    {boardId &&
+                        (isAddingColumn ? (
+                            <form
+                                onSubmit={(event) => void handleAddColumn(event)}
+                                className="bg-surface-container-low gap-stack-sm flex w-80 shrink-0 flex-col rounded-xl p-3 shadow-sm"
+                            >
+                                <input
+                                    autoFocus
+                                    value={columnTitle}
+                                    onChange={(event) =>
+                                        setColumnTitle(event.target.value)
+                                    }
+                                    placeholder="List name"
+                                    className="text-body-base text-on-surface w-full rounded border-0 bg-transparent p-0 focus:outline-none"
+                                />
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="submit"
+                                        disabled={createListMutation.isPending}
+                                        className="bg-primary text-on-primary text-body-sm rounded-lg px-3 py-1.5"
+                                    >
+                                        {createListMutation.isPending
+                                            ? "Adding…"
+                                            : "Add column"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingColumn(false)}
+                                        className="text-on-surface-variant text-body-sm px-2"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingColumn(true)}
+                                className="border-outline-variant/50 hover:bg-surface-container-low hover:border-outline/50 text-on-surface-variant text-label-caps flex h-24 w-80 shrink-0 items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-colors"
+                            >
+                                <Plus className="size-4" aria-hidden="true" />
+                                Add column
+                            </button>
+                        ))}
+                </div>
+            </DndContext>
         </div>
     );
 }
