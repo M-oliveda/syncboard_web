@@ -30,14 +30,20 @@ further below. `CLAUDE.md` is a symlink to this file (so Claude Code's auto-load
 still finds it); there is no second copy to keep in sync.
 
 **Current state:** Phase 0 (scaffolding), Phase 1 (static board UI), Phase 2 (REST
-integration), and Phase 6 (auth & protected routing) are complete — all boxes in
+integration), Phase 3 (CI/CD & deployment environments), Phase 4 (drag-and-drop &
+optimistic UI), and Phase 6 (auth & protected routing) are complete — all boxes in
 `MASTERPLAN.md` §13 for those phases are checked (Phase 6 was pulled forward ahead of
-Phases 3–5 as a Phase 2 prerequisite; see the note there). Workspaces, boards, lists,
-and cards are fetched and mutated through TanStack Query hooks in `src/hooks/`
-(`useWorkspacesQuery`, `useBoardsQuery`, `useBoardQuery`, `useListMutations`,
-`useCardMutations`, `useMemberMutations`) talking to `syncboard_api` via the Axios
-instance in `src/lib/api.ts`; `src/lib/api-mappers.ts` converts backend DTOs
-(`src/types/api.ts`) into the existing UI-facing types so presentational components
+Phases 3–5 as a Phase 2 prerequisite; see the note there; Phase 3 was itself pulled
+forward ahead of Phases 4–5, see its note). CI/CD is real, not aspirational:
+`.github/workflows/{ci,deploy-dev,deploy-staging,deploy-prod, deploy-preview,cleanup-preview,e2e-staging}.yml`,
+the 3-stage `Dockerfile`, and all four GCP projects/GitHub Environments
+(Preview/Development/Staging/Production) exist and are wired up — see `MASTERPLAN.md`
+§13 Phase 3 for the one known gap (image registry is Docker Hub, not GCP Artifact
+Registry). Workspaces, boards, lists, and cards are fetched and mutated through TanStack
+Query hooks in `src/hooks/` (`useWorkspacesQuery`, `useBoardsQuery`, `useBoardQuery`,
+`useListMutations`, `useCardMutations`, `useMemberMutations`) talking to `syncboard_api`
+via the Axios instance in `src/lib/api.ts`; `src/lib/api-mappers.ts` converts backend
+DTOs (`src/types/api.ts`) into the existing UI-facing types so presentational components
 didn't need to change shape. Login/register/forgot-password/reset-password
 (`src/components/auth/`) are wired to the real `/auth/*` endpoints, the access token
 lives in the module-level store `src/lib/auth-session.ts` (never `localStorage`), and
@@ -46,15 +52,20 @@ lives in the module-level store `src/lib/auth-session.ts` (never `localStorage`)
 account menu. `src/lib/mock-board.ts`/`mock-workspace.ts` are gone — superseded by real
 data; `src/lib/mock-roadmap.ts` and `mock-card-detail.ts` are still in active use
 (Roadmap stays a static demo board by design, and the card-detail Activity feed stays
-mock — see MASTERPLAN §5.3/§13 Phase 2 for why). **Still no drag-and-drop or real-time**
-— board/list/card `order` is set once at creation and never changed by the UI, and
-nothing talks to Socket.io yet; those are Phases 4–5. Treat `README.md`/`MASTERPLAN.md`
-as the target contract for those later phases, not a description of what exists yet —
-check the filesystem before assuming a hook/query/socket integration is present beyond
-what's listed above. The sibling `syncboard_api` repo (fully scaffolded) is the
-reference for what "done" looks like for the _backend_ tooling level this project should
-converge on; as of this phase it also documents its refresh-token cookie handling as
-implemented rather than aspirational (`api/CLAUDE.md`).
+mock — see MASTERPLAN §5.3/§13 Phase 2 for why). Cards and lists can be dragged and
+reordered (`@dnd-kit`) with optimistic cache updates and rollback-on-failure — see
+`src/lib/reorder.ts` (pure move/order logic), `src/lib/board.ts`
+(`moveCardInBoard`/`moveListInBoard`), `useMoveCardMutation`/`useMoveListMutation`, and
+`useBoardDragAndDrop.ts` (the `@dnd-kit` wiring); `MASTERPLAN.md` §13 Phase 4 has the
+full breakdown, including the one known gap (no `onDragOver` cross-list visual reflow or
+`DragOverlay` yet — purely cosmetic, the move/rollback logic itself is complete).
+**Still no real-time** — nothing talks to Socket.io yet; that's Phase 5. Treat
+`README.md`/`MASTERPLAN.md` as the target contract for that later phase, not a
+description of what exists yet — check the filesystem before assuming a hook/query/
+socket integration is present beyond what's listed above. The sibling `syncboard_api`
+repo (fully scaffolded) is the reference for what "done" looks like for the _backend_
+tooling level this project should converge on; as of this phase it also documents its
+refresh-token cookie handling as implemented rather than aspirational (`api/CLAUDE.md`).
 
 ## Mandatory: Generate a Coding Plan First
 
