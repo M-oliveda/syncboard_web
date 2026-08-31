@@ -31,10 +31,10 @@ still finds it); there is no second copy to keep in sync.
 
 **Current state:** Phase 0 (scaffolding), Phase 1 (static board UI), Phase 2 (REST
 integration), Phase 3 (CI/CD & deployment environments), Phase 4 (drag-and-drop &
-optimistic UI), and Phase 6 (auth & protected routing) are complete — all boxes in
-`MASTERPLAN.md` §13 for those phases are checked (Phase 6 was pulled forward ahead of
-Phases 3–5 as a Phase 2 prerequisite; see the note there; Phase 3 was itself pulled
-forward ahead of Phases 4–5, see its note). CI/CD is real, not aspirational:
+optimistic UI), Phase 5 (real-time layer), and Phase 6 (auth & protected routing) are
+complete — all boxes in `MASTERPLAN.md` §13 are checked (Phase 6 was pulled forward
+ahead of Phases 3–5 as a Phase 2 prerequisite; see the note there; Phase 3 was itself
+pulled forward ahead of Phases 4–5, see its note). CI/CD is real, not aspirational:
 `.github/workflows/{ci,deploy-dev,deploy-staging,deploy-prod, deploy-preview,cleanup-preview,e2e-staging}.yml`,
 the 3-stage `Dockerfile`, and all four GCP projects/GitHub Environments
 (Preview/Development/Staging/Production) exist and are wired up — see `MASTERPLAN.md`
@@ -58,14 +58,26 @@ reordered (`@dnd-kit`) with optimistic cache updates and rollback-on-failure —
 (`moveCardInBoard`/`moveListInBoard`), `useMoveCardMutation`/`useMoveListMutation`, and
 `useBoardDragAndDrop.ts` (the `@dnd-kit` wiring); `MASTERPLAN.md` §13 Phase 4 has the
 full breakdown, including the one known gap (no `onDragOver` cross-list visual reflow or
-`DragOverlay` yet — purely cosmetic, the move/rollback logic itself is complete).
-**Still no real-time** — nothing talks to Socket.io yet; that's Phase 5. Treat
-`README.md`/`MASTERPLAN.md` as the target contract for that later phase, not a
-description of what exists yet — check the filesystem before assuming a hook/query/
-socket integration is present beyond what's listed above. The sibling `syncboard_api`
-repo (fully scaffolded) is the reference for what "done" looks like for the _backend_
-tooling level this project should converge on; as of this phase it also documents its
-refresh-token cookie handling as implemented rather than aspirational (`api/CLAUDE.md`).
+`DragOverlay` yet — purely cosmetic, the move/rollback logic itself is complete). The
+board now stays live across tabs via a `socket.io-client` singleton
+(`src/lib/socket.ts`'s `getSocket()`) and `src/hooks/useSocket.ts`, which joins
+`board:<boardId>` and patches the TanStack Query cache directly from `card:updated`/
+`board:user-presence` events — never a refetch. `card:updated` reuses
+`src/lib/board.ts`'s `moveCardInBoard` (the same reconciliation function Phase 4's
+`useMoveCardMutation` already used), so a teammate's drag and your own drag converge on
+one patch path. Presence lives in the cache too, at `["board", boardId, "presence"]`
+(`usePresenceQuery`). Because the backend only ever broadcasts `card:updated` from its
+`card:moved` socket handler (a REST `PATCH /cards/:id` alone broadcasts nothing —
+verified by reading `api/src/sockets/handlers/card.handler.ts`), `useMoveCardMutation`'s
+`onSuccess` now also emits `card:moved` after its REST call succeeds, purely to trigger
+the broadcast; REST still does the actual persist/rollback. One consequence carried
+forward as a known gap: title/description/checklist edits (REST-only) still don't
+live-sync to other tabs, only card moves do — see `MASTERPLAN.md` §13 Phase 5 for that
+and the other deferred gap (reconnect-after-expired-token isn't explicitly coordinated
+with the Axios refresh flow). The sibling `syncboard_api` repo (fully scaffolded) is the
+reference for what "done" looks like for the _backend_ tooling level this project should
+converge on; as of this phase it also documents its refresh-token cookie handling as
+implemented rather than aspirational (`api/CLAUDE.md`).
 
 ## Mandatory: Generate a Coding Plan First
 

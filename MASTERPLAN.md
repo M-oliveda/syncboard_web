@@ -758,10 +758,56 @@ Implementation notes:
 
 ### Phase 5 — Real-Time Layer
 
-- [ ] Add `socket.io-client`
-- [ ] Wire incoming `card:updated`/`board:user-presence` events to patch the TanStack
+- [x] Add `socket.io-client`
+- [x] Wire incoming `card:updated`/`board:user-presence` events to patch the TanStack
       Query cache
-- [ ] Validate with the two-browser-context E2E scenario
+- [x] Validate with the two-browser-context E2E scenario
+
+Implementation notes:
+
+- `src/lib/socket.ts` holds the `getSocket()` singleton (`autoConnect: false`, `auth` as
+  a callback that re-reads `src/lib/auth-session.ts`'s current token on every connect/
+  reconnect attempt — never a static object) and the pure `mapActiveUsersToPresence`
+  helper; `src/hooks/useSocket.ts` connects, joins `board:<boardId>`, and patches the
+  cache from `card:updated`/`board:user-presence`/`error`, tearing everything down
+  (including `socket.disconnect()`) on unmount — one connection per open board, matching
+  `AGENTS.md`'s Socket Lifecycle rule
+- `card:updated` reuses `src/lib/board.ts`'s existing `moveCardInBoard` — the same
+  function `useMoveCardMutation`'s `onSuccess` already used to reconcile the optimistic
+  guess in Phase 4 — so "my own drag" and "a teammate's drag" converge on one patch path
+  (idempotent, which matters since the backend broadcasts `card:updated` back to the
+  sender too)
+- Presence lives in the TanStack Query cache (`["board", boardId, "presence"]`, per
+  §8.1) via `usePresenceQuery`, not local component state, even though it has no REST
+  source — `emptyPresence` is a documented no-op `queryFn` that only exists so TanStack
+  Query types the result as always-defined (`initialData` is the only thing that ever
+  actually populates it)
+- **Backend gap this design works around, not fixes:** grepped `api/src` and
+  `card:updated` is only ever emitted from the `card:moved` socket handler
+  (`api/src/sockets/handlers/card.handler.ts`) — a REST `PATCH /cards/:id` alone
+  broadcasts nothing. So `useMoveCardMutation`'s `onSuccess` now also emits `card:moved`
+  over the socket after its REST-driven cache reconciliation (matches §3.2 step 3's
+  "PATCH ... AND socket emits `card:moved`"), purely to trigger the broadcast — the REST
+  call still does the actual persisting/rollback. One consequence:
+  title/description/checklist edits (REST-only, no socket emit) still don't live-sync to
+  other tabs; only card moves do. Not addressed here — same class of carried-forward gap
+  as Phase 2's activity feed/assignees/label-color gaps
+- **Known gap, deferred:** reconnecting after an expired token isn't explicitly
+  coordinated with the Axios 401 interceptor's refresh flow — the socket's `auth`
+  callback re-reads whatever token is currently in `authSession` on each reconnect
+  attempt, so it self-heals as long as a valid token already exists by the time
+  Socket.io retries, but there's no "refresh, then reconnect" handshake the way REST
+  calls get
+- `e2e/realtime-sync.spec.ts` verifies the two-browser-context contract against a
+  minimal local Socket.io stand-in (`e2e/support/socket-test-server.ts`, implementing
+  just `board:join`/`board:user-presence`/`card:moved`/`card:updated`) rather than a
+  real `syncboard_api`, since CI's `e2e` job runs no backend at all (`ci.yml`) — the
+  same constraint `board-drag.spec.ts` already documents for REST. Two real browser
+  contexts exchange real socket messages over a real WebSocket against that stand-in, so
+  this repo's actual `socket.io-client` wiring is exercised end-to-end; only the server
+  on the other end is a double. Needs port 4000 free locally (matches `VITE_SOCKET_URL`)
+  — fails with `EADDRINUSE`, not a real bug, if a local `syncboard_api` is already
+  running there
 
 ### Phase 6 — Auth & Polish
 
