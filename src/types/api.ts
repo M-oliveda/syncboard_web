@@ -74,3 +74,15 @@ export interface ApiCard {
     labels: string[];
     checklist: ApiChecklistItem[];
 }
+
+/** `board:user-presence` socket payload — see `api/MASTERPLAN.md` §7.3. No
+ * `name`/`avatarUrl` yet, only `email`. */
+export interface ApiActiveUser {
+    userId: string;
+    email: string;
+}
+
+export interface ApiBoardUserPresence {
+    boardId: string;
+    activeUsers: ApiActiveUser[];
+}

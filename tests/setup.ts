@@ -4,7 +4,17 @@ import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 import { authSession } from "@/lib/auth-session";
 
+import { mockSocket } from "./mocks/socket";
 import { server } from "./mocks/server";
+
+// Real `socket.io-client` opens a real WebSocket handshake — never desirable in
+// jsdom. Every test file gets this fake instead; `src/lib/socket.ts`'s singleton
+// memoizes around whatever `io()` returns, so the same `mockSocket` backs every
+// `getSocket()` call within a test file.
+vi.mock("socket.io-client", async () => {
+    const mocked = await import("./mocks/socket");
+    return { io: mocked.io };
+});
 
 beforeAll(() => {
     server.listen({ onUnhandledRequest: "error" });
@@ -14,6 +24,11 @@ afterEach(() => {
     cleanup();
     server.resetHandlers();
     authSession.clearAccessToken();
+    mockSocket.connect.mockClear();
+    mockSocket.disconnect.mockClear();
+    mockSocket.emit.mockClear();
+    mockSocket.on.mockClear();
+    mockSocket.off.mockClear();
 });
 
 afterAll(() => {
