@@ -696,23 +696,65 @@ Pulled forward from the end of the roadmap — the pipeline exists before the fe
 that need to ship through it, not after, mirroring the approach in
 [`api/MASTERPLAN.md`'s Phase 3](../api/MASTERPLAN.md#phase-3--cicd--deployment-environments):
 
-- [ ] Add `ci.yml` (lint, type-check, unit tests with the 100% coverage gate, Playwright
+- [x] Add `ci.yml` (lint, type-check, unit tests with the 100% coverage gate, Playwright
       smoke suite)
-- [ ] Dockerize the app (multi-stage build → Nginx serving the static bundle)
-- [ ] Provision the four dedicated GCP projects/service accounts (Preview, Development,
+- [x] Dockerize the app (multi-stage build → Nginx serving the static bundle)
+- [x] Provision the four dedicated GCP projects/service accounts (Preview, Development,
       Staging, Production) and configure Workload Identity Federation
-- [ ] Add `deploy-dev.yml`/`deploy-staging.yml`/`deploy-preview.yml`, chained from
+- [x] Add `deploy-dev.yml`/`deploy-staging.yml`/`deploy-preview.yml`, chained from
       `ci.yml` (dev/staging auto-deploy on push; preview deploys ephemerally on PR
       open/update against the Development API and tears down on close), each building
       its own Vite bundle from that environment's `VITE_*` secrets
-- [ ] Add `deploy-prod.yml` (manual dispatch only; reruns `ci.yml`'s test job first,
+- [x] Add `deploy-prod.yml` (manual dispatch only; reruns `ci.yml`'s test job first,
       since dispatch bypasses `ci.yml`'s own triggers)
+
+Known gaps carried forward, not fixed silently:
+
+- Built container images are pushed to Docker Hub (`docker.io/moliveda/syncboard-web`),
+  not GCP Artifact Registry — GCP Workload Identity Federation is used to authenticate
+  the `deploy-cloudrun`/`gcloud run deploy` step only, not the image push itself
+- `e2e-staging.yml` (manual/post-deploy smoke E2E against Staging) referenced a
+  `test:e2e:staging` npm script that didn't exist yet, and `playwright.config.ts` had no
+  way to point at a deployed URL with Basic Auth instead of `localhost:5173` — fixed in
+  the same pass as Phase 4 below (`playwright.staging.config.ts` +
+  `e2e/staging/smoke.spec.ts`), rather than having shipped with the rest of this phase
 
 ### Phase 4 — Drag-and-Drop & Optimistic UI
 
-- [ ] Introduce `@dnd-kit`
-- [ ] Implement the optimistic cache update + rollback-on-failure pattern for card and
+- [x] Introduce `@dnd-kit`
+- [x] Implement the optimistic cache update + rollback-on-failure pattern for card and
       list reordering
+
+Implementation notes:
+
+- `src/lib/reorder.ts` holds the pure, dnd-kit-agnostic move logic
+  (`computeOrderForIndex`, `computeCardMove`, `computeListMove`, `resolveDragEndIntent`)
+  so the fractional-order math and drag-intent resolution are fully unit-tested without
+  simulating a real pointer gesture; `src/lib/board.ts`'s
+  `moveCardInBoard`/`moveListInBoard` apply that result to the cached `Board` shape,
+  used by both the optimistic guess (`onMutate`) and the server reconciliation
+  (`onSuccess`) in `useMoveCardMutation`/`useMoveListMutation` (`useCardMutations.ts`/
+  `useListMutations.ts`)
+- `useBoardDragAndDrop.ts` wires `@dnd-kit`'s sensors and `onDragEnd` to those mutations
+  — kept thin enough to unit-test by calling `handleDragEnd` directly with a fabricated
+  `DragEndEvent`, rather than needing a real drag simulation
+- `List`/`CardItem` are both `useSortable` items; `List` doubles as the droppable
+  container for its cards (multi-container dnd-kit pattern). Dragging is disabled
+  per-item (`disabled`/`dragDisabled` props) rather than by conditionally mounting
+  `DndContext` — the read-only Roadmap board (no `boardId`) renders the same components
+  with dragging turned off instead of a separate code path
+- `mapApiListToBoardList`/`mapApiCardToBoardCard` (`api-mappers.ts`) previously dropped
+  `order` and never sorted a list's cards by it — both fixed as a prerequisite for this
+  phase, since drag-and-drop needs correct, persisted ordering to compute against
+- No `DragOverlay` and no `onDragOver` cross-list visual reflow in this pass — a card
+  being dragged into a different list only visibly moves on drop, not while hovering
+  over the target column. Purely a visual-polish gap (the move itself, its optimistic
+  update, and rollback-on-failure all work correctly); left as a follow-up since neither
+  changes the mutation/order logic
+- `e2e/board-drag.spec.ts` verifies a real pointer-driven drag in a real browser, with
+  `page.route` mocking the REST calls (`/auth/refresh`, `/boards/:id`, `/cards/:id`)
+  instead of requiring a live `syncboard_api` instance, since CI's `e2e` job doesn't run
+  one
 
 ### Phase 5 — Real-Time Layer
 

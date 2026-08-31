@@ -32,6 +32,7 @@ export function mapApiCardToBoardCard(card: ApiCard): BoardCard {
 
     return {
         id: card._id,
+        order: card.order,
         title: card.title,
         description: card.description,
         labels: card.labels.map((name) => ({
@@ -63,8 +64,12 @@ export function mapApiCardToBoardCard(card: ApiCard): BoardCard {
 export function mapApiListToBoardList(list: ApiList, cards: ApiCard[]): BoardList {
     return {
         id: list._id,
+        order: list.order,
         name: list.title,
-        cards: cards.filter((card) => card.listId === list._id).map(mapApiCardToBoardCard),
+        cards: cards
+            .filter((card) => card.listId === list._id)
+            .sort((a, b) => a.order - b.order)
+            .map(mapApiCardToBoardCard),
     };
 }
 

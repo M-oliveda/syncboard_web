@@ -11,10 +11,11 @@ describe("List", () => {
     it("renders the list name, card count, and each card", async () => {
         const list: BoardList = {
             id: "l1",
+            order: 0,
             name: "To Do",
             cards: [
-                { id: "c1", title: "First card" },
-                { id: "c2", title: "Second card" },
+                { id: "c1", order: 0, title: "First card" },
+                { id: "c2", order: 1, title: "Second card" },
             ],
         };
 
@@ -36,8 +37,9 @@ describe("List", () => {
         const onCardClick = vi.fn();
         const list: BoardList = {
             id: "l1",
+            order: 0,
             name: "To Do",
-            cards: [{ id: "c1", title: "First card" }],
+            cards: [{ id: "c1", order: 0, title: "First card" }],
         };
 
         renderWithRouter(
@@ -50,7 +52,7 @@ describe("List", () => {
 
     it("deletes the list via the list options menu", async () => {
         const user = userEvent.setup();
-        const list: BoardList = { id: "l1", name: "To Do", cards: [] };
+        const list: BoardList = { id: "l1", order: 0, name: "To Do", cards: [] };
         renderWithRouter(<List boardId="board-1" list={list} />);
 
         await user.click(
@@ -66,8 +68,9 @@ describe("List", () => {
     it("hides list options and add-a-card in read-only mode (no boardId)", async () => {
         const list: BoardList = {
             id: "l1",
+            order: 0,
             name: "To Do",
-            cards: [{ id: "c1", title: "First card" }],
+            cards: [{ id: "c1", order: 0, title: "First card" }],
         };
 
         renderWithRouter(<List list={list} />);

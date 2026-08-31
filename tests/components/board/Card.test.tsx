@@ -7,12 +7,13 @@ import type { BoardCard } from "@/types/board";
 
 const baseCard: BoardCard = {
     id: "c1",
+    order: 0,
     title: "Write release notes",
 };
 
 describe("CardItem", () => {
     it("renders a completed card with strikethrough title and no meta row", () => {
-        render(<CardItem card={{ ...baseCard, completed: true }} />);
+        render(<CardItem card={{ ...baseCard, completed: true }} listId="l1" />);
 
         expect(screen.getByText("Write release notes")).toHaveClass("line-through");
         expect(screen.getByText("Completed")).toBeInTheDocument();
@@ -28,6 +29,7 @@ describe("CardItem", () => {
                     labels: [{ id: "l1", name: "DOCS", color: "secondary" }],
                     progress: 40,
                 }}
+                listId="l1"
             />,
         );
 
@@ -46,6 +48,7 @@ describe("CardItem", () => {
                     commentCount: 3,
                     assignees: [{ id: "a1", initials: "MO" }],
                 }}
+                listId="l1"
             />,
         );
 
@@ -55,28 +58,38 @@ describe("CardItem", () => {
     });
 
     it("defaults checklistCompleted to 0 when omitted", () => {
-        render(<CardItem card={{ ...baseCard, checklistTotal: 5 }} />);
+        render(<CardItem card={{ ...baseCard, checklistTotal: 5 }} listId="l1" />);
 
         expect(screen.getByText("0/5")).toBeInTheDocument();
     });
 
     it("renders nothing in the meta row when there is no meta or assignees", () => {
-        render(<CardItem card={baseCard} />);
+        render(<CardItem card={baseCard} listId="l1" />);
 
         expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
         expect(screen.getByText("Write release notes")).toBeInTheDocument();
     });
 
-    it("is not interactive when no onClick is provided", () => {
-        render(<CardItem card={baseCard} />);
+    it("is not interactive when no onClick is provided and dragging is disabled", () => {
+        render(<CardItem card={baseCard} listId="l1" dragDisabled />);
 
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("is still keyboard-focusable as a drag handle even without onClick", () => {
+        render(<CardItem card={baseCard} listId="l1" />);
+
+        expect(
+            screen.getByRole("button", { name: "Write release notes" }),
+        ).toBeInTheDocument();
     });
 
     it("calls onClick when clicked or activated via keyboard, for both card states", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
-        const { unmount } = render(<CardItem card={baseCard} onClick={onClick} />);
+        const { unmount } = render(
+            <CardItem card={baseCard} listId="l1" onClick={onClick} />,
+        );
 
         const button = screen.getByRole("button", { name: "Write release notes" });
         await user.click(button);
@@ -91,7 +104,13 @@ describe("CardItem", () => {
 
         onClick.mockClear();
         unmount();
-        render(<CardItem card={{ ...baseCard, completed: true }} onClick={onClick} />);
+        render(
+            <CardItem
+                card={{ ...baseCard, completed: true }}
+                listId="l1"
+                onClick={onClick}
+            />,
+        );
         await user.click(screen.getByRole("button", { name: /Write release notes/ }));
         expect(onClick).toHaveBeenCalledTimes(1);
     });
@@ -99,7 +118,7 @@ describe("CardItem", () => {
     it("ignores other keys while focused", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
-        render(<CardItem card={baseCard} onClick={onClick} />);
+        render(<CardItem card={baseCard} listId="l1" onClick={onClick} />);
 
         screen.getByRole("button", { name: "Write release notes" }).focus();
         await user.keyboard("a");
