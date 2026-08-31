@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardQueryKey } from "@/hooks/useBoardQuery";
 import { api } from "@/lib/api";
 import { moveCardInBoard } from "@/lib/board";
+import { getSocket } from "@/lib/socket";
 import type { ApiCard, ApiChecklistItem, ApiSuccess } from "@/types/api";
 import type { Board } from "@/types/board";
 
@@ -72,9 +73,13 @@ interface MoveCardContext {
 /** Optimistic drag-and-drop move — Phase 4 scope. `onMutate` snapshots the board
  * before writing the optimistic guess into the cache; `onError` rolls back to that
  * snapshot; `onSuccess` reconciles with the server's own `listId`/`order` in case it
- * ever differs from the guess. `boardId` is optional for the same Rules-of-Hooks
- * reason as the other mutations above — the read-only Roadmap board never triggers a
- * drag, so this mutation is never actually called there. */
+ * ever differs from the guess, then emits `card:moved` over the socket (Phase 5) so
+ * other clients viewing this board get the `card:updated` broadcast — the REST PATCH
+ * above persists the move, but only the socket-driven path on the backend broadcasts
+ * it (see `api/src/sockets/handlers/card.handler.ts`), so both are needed. `boardId`
+ * is optional for the same Rules-of-Hooks reason as the other mutations above — the
+ * read-only Roadmap board never triggers a drag, so this mutation is never actually
+ * called there. */
 export function useMoveCardMutation(boardId: string | undefined) {
     const queryClient = useQueryClient();
 
@@ -109,11 +114,17 @@ export function useMoveCardMutation(boardId: string | undefined) {
         onSuccess: (card) => {
             if (!boardId) return;
             const board = queryClient.getQueryData<Board>(boardQueryKey(boardId));
-            if (!board) return;
-            queryClient.setQueryData<Board>(
-                boardQueryKey(boardId),
-                moveCardInBoard(board, card._id, card.listId, card.order),
-            );
+            if (board) {
+                queryClient.setQueryData<Board>(
+                    boardQueryKey(boardId),
+                    moveCardInBoard(board, card._id, card.listId, card.order),
+                );
+            }
+            getSocket().emit("card:moved", {
+                cardId: card._id,
+                targetListId: card.listId,
+                newOrder: card.order,
+            });
         },
     });
 }
