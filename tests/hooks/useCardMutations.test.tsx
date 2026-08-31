@@ -7,6 +7,7 @@ import { boardQueryKey } from "@/hooks/useBoardQuery";
 import { useCreateCardMutation, useMoveCardMutation } from "@/hooks/useCardMutations";
 import type { Board } from "@/types/board";
 
+import { mockSocket } from "../mocks/socket";
 import { server } from "../mocks/server";
 
 function makeWrapper(queryClient: QueryClient) {
@@ -82,6 +83,11 @@ describe("useMoveCardMutation", () => {
                 .find((list) => list.id === "l2")
                 ?.cards.map((card) => card.id),
         ).toEqual(["c1"]);
+        expect(mockSocket.emit).toHaveBeenCalledWith("card:moved", {
+            cardId: "c1",
+            targetListId: "l2",
+            newOrder: -1,
+        });
     });
 
     it("rolls back the optimistic move when the request fails", async () => {
@@ -116,6 +122,7 @@ describe("useMoveCardMutation", () => {
         result.current.mutate({ cardId: "c1", listId: "l2", order: -1 });
 
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(mockSocket.emit).not.toHaveBeenCalled();
     });
 
     it("is a no-op error rollback when boardId is undefined", async () => {

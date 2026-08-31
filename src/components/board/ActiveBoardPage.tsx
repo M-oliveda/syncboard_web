@@ -8,6 +8,7 @@ import { OriginUiEmptyState } from "@/components/ui/empty-state";
 import { PresenceHeader } from "@/components/layout/PresenceHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoardQuery } from "@/hooks/useBoardQuery";
+import { usePresenceQuery, useSocket } from "@/hooks/useSocket";
 import { findCardInBoard } from "@/lib/board";
 
 export function ActiveBoardPage() {
@@ -15,6 +16,8 @@ export function ActiveBoardPage() {
     const { card: cardId } = useSearch({ from: "/app/boards/$boardId" });
     const navigate = useNavigate({ from: "/app/boards/$boardId" });
     const boardQuery = useBoardQuery(boardId);
+    const presenceQuery = usePresenceQuery(boardId);
+    useSocket(boardId);
 
     const board = boardQuery.data;
     const selected = board && cardId ? findCardInBoard(board, cardId) : undefined;
@@ -66,7 +69,7 @@ export function ActiveBoardPage() {
                                 className="bg-outline-variant/30 h-6 w-px"
                                 aria-hidden="true"
                             />
-                            <PresenceHeader users={[]} />
+                            <PresenceHeader users={presenceQuery.data} />
                         </div>
                     </div>
                     <BoardCanvas
