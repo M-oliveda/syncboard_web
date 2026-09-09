@@ -3,6 +3,29 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
+// CardDetailModal's own responsibility is wiring RichTextEditor's onSave to the
+// card mutation, not exercising Lexical's contentEditable typing/selection
+// machinery — that's covered by the markdown-editor test suite directly.
+// jsdom's Selection/Range support isn't reliable enough for real typing into a
+// Lexical editor to behave deterministically here, so this stubs the editable
+// surface as a plain textbox that mirrors the same onChange contract.
+vi.mock("@/components/card-modal/markdown-editor", () => ({
+    MarkdownEditor: (props: {
+        initialContent: string;
+        onChange?: (markdown: string) => void;
+        readOnly?: boolean;
+    }) =>
+        props.readOnly ? (
+            <div>{props.initialContent}</div>
+        ) : (
+            <textarea
+                aria-label="Card description"
+                defaultValue={props.initialContent}
+                onChange={(event) => props.onChange?.(event.target.value)}
+            />
+        ),
+}));
+
 import { CardDetailModal } from "@/components/card-modal/CardDetailModal";
 import type { BoardCard } from "@/types/board";
 
@@ -159,10 +182,8 @@ describe("CardDetailModal", () => {
 
         await screen.findByDisplayValue("Fix the thing");
         await user.click(screen.getByRole("button", { name: "Edit" }));
-        await user.type(
-            screen.getByPlaceholderText("Add a more detailed description..."),
-            "New description",
-        );
+        const editable = screen.getByLabelText("Card description");
+        await user.type(editable, "New description");
         await user.click(screen.getByRole("button", { name: "Save" }));
 
         expect(await screen.findByText("New description")).toBeInTheDocument();

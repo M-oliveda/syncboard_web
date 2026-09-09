@@ -181,3 +181,71 @@
         }
     }
 }
+
+/* ============================================================
+   Card description Markdown editor (Lexical) theme classes —
+   assigned by src/components/card-modal/markdown-editor/editorTheme.ts.
+   Lexical hands these classnames to generated DOM nodes directly, so
+   they can't take Tailwind classes in JSX; @apply is the sanctioned
+   way to keep them on this file's design tokens instead of inventing
+   new values.
+   ============================================================ */
+
+@layer components {
+    .editor-content {
+        @apply text-on-surface text-body-base min-h-[120px] p-3 font-sans outline-none;
+        caret-color: var(--color-primary);
+    }
+
+    .editor-paragraph {
+        @apply mb-2.5 last:mb-0;
+    }
+
+    .editor-quote {
+        @apply border-outline-variant text-on-surface-variant my-3 border-l-2 py-1 pl-4 italic;
+    }
+
+    .editor-ul {
+        @apply mb-3 list-disc pl-6;
+    }
+
+    .editor-ol {
+        @apply mb-3 list-decimal pl-6;
+    }
+
+    .editor-listitem {
+        @apply mb-1;
+    }
+
+    .editor-nested-listitem {
+        @apply ml-6 list-[circle];
+    }
+
+    .editor-code-block {
+        @apply bg-surface-container-high text-body-sm my-3 block rounded-md p-4 font-mono whitespace-pre-wrap;
+    }
+
+    .editor-link {
+        @apply text-primary cursor-pointer underline hover:opacity-80;
+    }
+
+    .editor-text-bold {
+        @apply font-bold;
+    }
+
+    .editor-text-italic {
+        @apply italic;
+    }
+
+    .editor-text-strikethrough {
+        @apply line-through;
+    }
+
+    .editor-text-code {
+        @apply bg-surface-container-high rounded-sm px-1.5 py-0.5 font-mono text-[0.875em];
+    }
+
+    .editor-placeholder {
+        @apply text-on-surface-variant/60 pointer-events-none absolute top-3 left-3 overflow-hidden text-ellipsis select-none;
+    }
+}
