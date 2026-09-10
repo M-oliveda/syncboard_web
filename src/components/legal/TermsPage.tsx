@@ -8,7 +8,7 @@ export function TermsPage() {
             icon={<FileText className="size-8" />}
             title="Terms of Service"
             description='These Terms of Service ("Terms") govern your access to and use of the SyncBoard platform, websites, and services. Please read them carefully before using our services.'
-            lastUpdated="October 24, 2023"
+            lastUpdated="August 20, 2026"
             sections={[
                 {
                     id: "acceptance",

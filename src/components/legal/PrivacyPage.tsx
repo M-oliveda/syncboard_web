@@ -8,7 +8,7 @@ export function PrivacyPage() {
             icon={<Shield className="size-8" />}
             title="Privacy Policy"
             description="Your privacy is critically important to us. At SyncBoard, we have a few fundamental principles regarding the information we collect and how we handle it."
-            lastUpdated="October 24, 2023"
+            lastUpdated="August 20, 2026"
             sections={[
                 {
                     id: "collection",
