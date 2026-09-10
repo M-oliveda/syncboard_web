@@ -60,6 +60,25 @@ describe("ForgotPasswordPage", () => {
         ).toBeInTheDocument();
     });
 
+    it("returns to the form when clicking 'Try a different email'", async () => {
+        const user = userEvent.setup();
+        renderWithRouter(<ForgotPasswordPage />);
+
+        await user.type(await screen.findByLabelText("Email"), "jane@company.com");
+        await user.click(screen.getByRole("button", { name: "Send reset link" }));
+
+        await user.click(
+            await screen.findByRole("button", { name: "Try a different email" }),
+        );
+
+        expect(
+            await screen.findByRole("button", { name: "Send reset link" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/If that email exists, a reset link has been sent/),
+        ).not.toBeInTheDocument();
+    });
+
     it("shows a pending state while the request is in flight", async () => {
         server.use(
             http.post("*/auth/forgot-password", async () => {
