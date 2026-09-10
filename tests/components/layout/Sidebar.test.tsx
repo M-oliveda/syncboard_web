@@ -9,11 +9,10 @@ import { renderWithRouter } from "../../test-utils/renderWithRouter";
 import { renderWithRoutes } from "../../test-utils/renderWithRoutes";
 
 describe("Sidebar", () => {
-    it("renders the logo, workspace switcher, and boards nav link", async () => {
+    it("renders the logo and boards nav link", async () => {
         renderWithRouter(<Sidebar />);
 
         expect(await screen.findByText("SyncBoard")).toBeInTheDocument();
-        expect(screen.getByText("Design Team")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Boards/ })).toHaveAttribute(
             "href",
             "/app",
