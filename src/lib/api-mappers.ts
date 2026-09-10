@@ -8,7 +8,12 @@ import type {
     ApiList,
     ApiWorkspaceMember,
 } from "@/types/api";
-import type { AccentColor, BoardSummary, MemberRole, WorkspaceMember } from "@/types/workspace";
+import type {
+    AccentColor,
+    BoardSummary,
+    MemberRole,
+    WorkspaceMember,
+} from "@/types/workspace";
 
 /** Deterministic string hash — used to derive a stable icon/accent/label color from
  * an id or name the backend doesn't carry a color/icon field for, so the same
@@ -25,8 +30,23 @@ const LABEL_COLOR_PALETTE: LabelColor[] = ["primary", "secondary", "tertiary", "
 
 /** Backend labels are raw strings with no id/color — mapped to a deterministic color
  * so the same label name always renders the same way. Label color customization is
- * out of scope until the backend models labels as first-class resources. */
-export function mapApiCardToBoardCard(card: ApiCard): BoardCard {
+ * out of scope until the backend models labels as first-class resources. Exported so
+ * a freshly-added label (not yet round-tripped through the backend) can be colored
+ * identically to how it'll look after refetch. */
+export function colorForLabel(name: string): LabelColor {
+    /* v8 ignore next -- @preserve: modulo of a non-empty array is always in-bounds, fallback only satisfies noUncheckedIndexedAccess */
+    return LABEL_COLOR_PALETTE[hashString(name) % LABEL_COLOR_PALETTE.length] ?? "secondary";
+}
+
+/** Backend stores unpopulated assignee ObjectIds — `memberLookup` (built from the
+ * workspace's populated members) resolves them to displayable initials; ids that
+ * aren't found (e.g. a removed member) are dropped. Omitting `memberLookup`
+ * preserves the old always-empty behavior for callers that don't have member data
+ * on hand. */
+export function mapApiCardToBoardCard(
+    card: ApiCard,
+    memberLookup?: Map<string, WorkspaceMember>,
+): BoardCard {
     const checklistTotal = card.checklist.length;
     const checklistCompleted = card.checklist.filter((item) => item.done).length;
 
@@ -38,10 +58,7 @@ export function mapApiCardToBoardCard(card: ApiCard): BoardCard {
         labels: card.labels.map((name) => ({
             id: name,
             name,
-            /* v8 ignore next -- @preserve: modulo of a non-empty array is always in-bounds, fallback only satisfies noUncheckedIndexedAccess */
-            color:
-                LABEL_COLOR_PALETTE[hashString(name) % LABEL_COLOR_PALETTE.length] ??
-                "secondary",
+            color: colorForLabel(name),
         })),
         checklist: card.checklist.map((item, index) => ({
             id: String(index),
@@ -54,14 +71,23 @@ export function mapApiCardToBoardCard(card: ApiCard): BoardCard {
             checklistTotal > 0
                 ? Math.round((checklistCompleted / checklistTotal) * 100)
                 : undefined,
-        // Backend stores unpopulated assignee ObjectIds; the "Add assignee" UI was
-        // already inert in the Phase 1 mock and stays that way until there's a way
-        // to resolve them to displayable initials.
-        assignees: [],
+        assignees: memberLookup
+            ? card.assignees
+                  .map((id) => memberLookup.get(id))
+                  .filter((member) => member !== undefined)
+                  .map((member) => ({
+                      id: member.id,
+                      initials: emailInitials(member.email),
+                  }))
+            : [],
     };
 }
 
-export function mapApiListToBoardList(list: ApiList, cards: ApiCard[]): BoardList {
+export function mapApiListToBoardList(
+    list: ApiList,
+    cards: ApiCard[],
+    memberLookup?: Map<string, WorkspaceMember>,
+): BoardList {
     return {
         id: list._id,
         order: list.order,
@@ -69,7 +95,7 @@ export function mapApiListToBoardList(list: ApiList, cards: ApiCard[]): BoardLis
         cards: cards
             .filter((card) => card.listId === list._id)
             .sort((a, b) => a.order - b.order)
-            .map(mapApiCardToBoardCard),
+            .map((card) => mapApiCardToBoardCard(card, memberLookup)),
     };
 }
 
@@ -79,13 +105,16 @@ export interface ApiBoardDetail {
     cards: ApiCard[];
 }
 
-export function mapApiBoardDetailToBoard({ board, lists, cards }: ApiBoardDetail): Board {
+export function mapApiBoardDetailToBoard(
+    { board, lists, cards }: ApiBoardDetail,
+    memberLookup?: Map<string, WorkspaceMember>,
+): Board {
     return {
         id: board._id,
         name: board.title,
         lists: [...lists]
             .sort((a, b) => a.order - b.order)
-            .map((list) => mapApiListToBoardList(list, cards)),
+            .map((list) => mapApiListToBoardList(list, cards, memberLookup)),
     };
 }
 
@@ -115,7 +144,7 @@ export function mapApiBoardToBoardSummary(
     };
 }
 
-function emailInitials(email: string): string {
+export function emailInitials(email: string): string {
     /* v8 ignore next -- @preserve: String.split always returns a non-empty array, so [0] is never undefined */
     const local = email.split("@")[0] ?? email;
     return local.slice(0, 2).toUpperCase();
