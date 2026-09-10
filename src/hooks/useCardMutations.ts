@@ -12,6 +12,7 @@ export interface UpdateCardInput {
     title?: string;
     description?: string;
     labels?: string[];
+    assignees?: string[];
     checklist?: ApiChecklistItem[];
 }
 

@@ -60,6 +60,25 @@ describe("ActiveBoardPage", () => {
         expect(screen.queryByText("Description")).not.toBeInTheDocument();
     });
 
+    it("threads the board's lists and workspace members into the card detail modal", async () => {
+        const user = userEvent.setup();
+        renderAtPath(`/app/boards/${board._id}?card=${firstCard._id}`);
+
+        await screen.findByDisplayValue(firstCard.title);
+        await user.click(screen.getByRole("button", { name: firstList.title }));
+        expect(
+            await screen.findByRole("menuitem", { name: "In Progress" }),
+        ).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Assignees" }));
+        expect(
+            await screen.findByRole("menuitemcheckbox", { name: "mauricio" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("menuitemcheckbox", { name: "jamie" }),
+        ).toBeInTheDocument();
+    });
+
     it("shows an error state when the board fails to load", async () => {
         server.use(http.get("*/boards/:boardId", () => HttpResponse.error()));
 
