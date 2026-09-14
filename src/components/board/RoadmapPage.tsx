@@ -1,19 +1,41 @@
-import { ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import { BoardCanvas } from "@/components/board/BoardCanvas";
 import { AppShell } from "@/components/layout/AppShell";
 import { PresenceHeader } from "@/components/layout/PresenceHeader";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { mockRoadmapBoard, mockRoadmapPresence } from "@/lib/mock-roadmap";
 
 export function RoadmapPage() {
     return (
         <AppShell
             breadcrumb={
-                <>
-                    <span>Workspace</span>
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                    <span className="text-on-surface font-semibold">Boards</span>
-                </>
+                <Breadcrumb>
+                    <BreadcrumbList className="flex-nowrap">
+                        <BreadcrumbItem>
+                            <span>Workspace</span>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbLink render={<Link to="/app" />}>
+                                Boards
+                            </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage className="text-on-surface truncate font-semibold">
+                                {mockRoadmapBoard.name}
+                            </BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
             }
         >
             <div className="bg-surface border-surface-variant px-stack-lg py-stack-md flex flex-none items-center justify-between border-b">

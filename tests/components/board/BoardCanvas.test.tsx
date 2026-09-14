@@ -141,4 +141,52 @@ describe("BoardCanvas", () => {
             screen.queryByRole("button", { name: "Add column" }),
         ).not.toBeInTheDocument();
     });
+
+    describe("on mobile", () => {
+        it("renders carousel prev/next controls alongside every list", async () => {
+            window.innerWidth = 500;
+            const board: Board = {
+                id: "b1",
+                name: "Test Board",
+                lists: [
+                    { id: "l1", order: 0, name: "To Do", cards: [] },
+                    { id: "l2", order: 1, name: "Done", cards: [] },
+                ],
+            };
+
+            renderWithRouter(<BoardCanvas board={board} boardId="b1" />);
+
+            expect(
+                await screen.findByRole("heading", { name: "To Do" }),
+            ).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Done" })).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: "Previous slide" }),
+            ).toBeDisabled();
+            expect(
+                screen.getByRole("button", { name: "Next slide" }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("button", { name: "Add column" }),
+            ).toBeInTheDocument();
+        });
+
+        it("hides the add-column control in read-only mode (no boardId)", async () => {
+            window.innerWidth = 500;
+            const board: Board = {
+                id: "b1",
+                name: "Test Board",
+                lists: [{ id: "l1", order: 0, name: "To Do", cards: [] }],
+            };
+
+            renderWithRouter(<BoardCanvas board={board} />);
+
+            expect(
+                await screen.findByRole("heading", { name: "To Do" }),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByRole("button", { name: "Add column" }),
+            ).not.toBeInTheDocument();
+        });
+    });
 });

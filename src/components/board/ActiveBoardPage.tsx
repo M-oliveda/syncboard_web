@@ -1,21 +1,36 @@
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { AlertTriangle, ChevronRight } from "lucide-react";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { AlertTriangle } from "lucide-react";
 
 import { BoardCanvas } from "@/components/board/BoardCanvas";
 import { CardDetailModal } from "@/components/card-modal/CardDetailModal";
 import { AppShell } from "@/components/layout/AppShell";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { OriginUiEmptyState } from "@/components/ui/empty-state";
 import { PresenceHeader } from "@/components/layout/PresenceHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoardQuery } from "@/hooks/useBoardQuery";
 import { usePresenceQuery, useSocket } from "@/hooks/useSocket";
+import { useCurrentWorkspace } from "@/hooks/useWorkspacesQuery";
 import { findCardInBoard } from "@/lib/board";
+import { mapApiWorkspaceMemberToWorkspaceMember } from "@/lib/api-mappers";
 
 export function ActiveBoardPage() {
     const { boardId } = useParams({ from: "/app/boards/$boardId" });
     const { card: cardId } = useSearch({ from: "/app/boards/$boardId" });
     const navigate = useNavigate({ from: "/app/boards/$boardId" });
-    const boardQuery = useBoardQuery(boardId);
+    const workspaceQuery = useCurrentWorkspace();
+    const members = (workspaceQuery.data?.members ?? []).map(
+        mapApiWorkspaceMemberToWorkspaceMember,
+    );
+    const memberLookup = new Map(members.map((member) => [member.id, member]));
+    const boardQuery = useBoardQuery(boardId, memberLookup);
     const presenceQuery = usePresenceQuery(boardId);
     useSocket(boardId);
 
@@ -33,11 +48,25 @@ export function ActiveBoardPage() {
     return (
         <AppShell
             breadcrumb={
-                <>
-                    <span>Workspace</span>
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                    <span className="text-on-surface font-semibold">Boards</span>
-                </>
+                <Breadcrumb>
+                    <BreadcrumbList className="flex-nowrap">
+                        <BreadcrumbItem>
+                            <span>Workspace</span>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbLink render={<Link to="/app" />}>
+                                Boards
+                            </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage className="text-on-surface truncate font-semibold">
+                                {board?.name ?? "Board"}
+                            </BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
             }
         >
             {boardQuery.isError && (
@@ -82,6 +111,9 @@ export function ActiveBoardPage() {
                         <CardDetailModal
                             card={selected.card}
                             listName={selected.listName}
+                            listId={selected.listId}
+                            lists={board.lists}
+                            members={members}
                             boardId={boardId}
                             open={true}
                             onOpenChange={closeCard}

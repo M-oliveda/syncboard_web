@@ -45,6 +45,8 @@ describe("AppShell", () => {
         );
 
         const dialog = await screen.findByRole("dialog");
-        expect(within(dialog).getByText("Design Team")).toBeInTheDocument();
+        expect(
+            within(dialog).getByRole("link", { name: /Boards/ }),
+        ).toBeInTheDocument();
     });
 });

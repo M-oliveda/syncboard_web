@@ -1,11 +1,9 @@
 import {
-    Eye,
+    Check,
     LayoutDashboard,
     ListChecks,
     ListTodo,
-    MoreHorizontal,
     Plus,
-    Share2,
     Subscript,
     Tag,
     Trash2,
@@ -17,6 +15,17 @@ import { useState } from "react";
 import { ActivityFeed } from "@/components/card-modal/ActivityFeed";
 import { Checklist } from "@/components/card-modal/Checklist";
 import { RichTextEditor } from "@/components/card-modal/RichTextEditor";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
     Dialog,
@@ -26,15 +35,24 @@ import {
 } from "@/components/ui/dialog";
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDeleteCardMutation, useUpdateCardMutation } from "@/hooks/useCardMutations";
+import { Input } from "@/components/ui/input";
+import {
+    useDeleteCardMutation,
+    useMoveCardMutation,
+    useUpdateCardMutation,
+} from "@/hooks/useCardMutations";
+import { colorForLabel, emailInitials } from "@/lib/api-mappers";
 import { mockCardDetail } from "@/lib/mock-card-detail";
+import { computeOrderForIndex } from "@/lib/reorder";
 import { cn } from "@/lib/utils";
 import type { ChecklistItem } from "@/types/card-detail";
-import type { BoardCard, LabelColor } from "@/types/board";
+import type { BoardCard, BoardList, LabelColor } from "@/types/board";
+import type { WorkspaceMember } from "@/types/workspace";
 
 const LABEL_COLORS: Record<LabelColor, string> = {
     primary: "bg-primary-container text-on-primary-container",
@@ -43,14 +61,69 @@ const LABEL_COLORS: Record<LabelColor, string> = {
     error: "bg-error-container text-on-error-container",
 };
 
-const HEADER_ACTIONS = [
-    { icon: Eye, label: "Watch" },
-    { icon: Share2, label: "Share" },
-];
+/** Shared by both assignee triggers (the "Add to card" entry and the sidebar's
+ * dashed "+" avatar) so the member list only needs to be built once. */
+function renderAssigneeMenuItems(
+    members: WorkspaceMember[],
+    assigneeIds: string[],
+    onToggle: (memberId: string) => void,
+) {
+    if (members.length === 0) {
+        return <DropdownMenuItem disabled>No workspace members</DropdownMenuItem>;
+    }
+    return members.map((member) => (
+        <DropdownMenuCheckboxItem
+            key={member.id}
+            checked={assigneeIds.includes(member.id)}
+            onCheckedChange={() => onToggle(member.id)}
+        >
+            {member.name}
+        </DropdownMenuCheckboxItem>
+    ));
+}
+
+/** Shared by both label-adder triggers, matching `renderAssigneeMenuItems`. The
+ * input stops keydown propagation because Base UI's `Menu.Popup` intercepts
+ * single-character keys for its own typeahead-to-select-an-item behavior — without
+ * this, keystrokes never reach the input's value. */
+function renderLabelAdderForm(
+    value: string,
+    onChange: (value: string) => void,
+    onSubmit: () => void,
+) {
+    return (
+        <form
+            onSubmit={(event) => {
+                event.preventDefault();
+                onSubmit();
+            }}
+            className="flex items-center gap-2"
+        >
+            <Input
+                autoFocus
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                onKeyDown={(event) => event.stopPropagation()}
+                placeholder="Label name"
+                aria-label="New label name"
+                className="h-8 w-36"
+            />
+            <button
+                type="submit"
+                className="bg-primary text-on-primary text-body-sm shrink-0 rounded-lg px-2 py-1.5"
+            >
+                Add
+            </button>
+        </form>
+    );
+}
 
 export interface CardDetailModalProps {
     card: BoardCard;
     listName: string;
+    listId: string;
+    lists: BoardList[];
+    members: WorkspaceMember[];
     boardId: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -59,14 +132,24 @@ export interface CardDetailModalProps {
 export function CardDetailModal({
     card,
     listName,
+    listId,
+    lists,
+    members,
     boardId,
     open,
     onOpenChange,
 }: CardDetailModalProps) {
     const [labels, setLabels] = useState(card.labels ?? []);
     const [title, setTitle] = useState(card.title);
+    const [assigneeIds, setAssigneeIds] = useState(
+        (card.assignees ?? []).map((assignee) => assignee.id),
+    );
+    const [labelDraft, setLabelDraft] = useState("");
     const updateCardMutation = useUpdateCardMutation(boardId);
     const deleteCardMutation = useDeleteCardMutation(boardId);
+    const moveCardMutation = useMoveCardMutation(boardId);
+
+    const assignedMembers = members.filter((member) => assigneeIds.includes(member.id));
 
     function saveTitle() {
         const trimmed = title.trim();
@@ -97,6 +180,42 @@ export function CardDetailModal({
         });
     }
 
+    function addLabel(name: string) {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const isDuplicate = labels.some(
+            (label) => label.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (isDuplicate) return;
+
+        const next = [
+            ...labels,
+            { id: trimmed, name: trimmed, color: colorForLabel(trimmed) },
+        ];
+        setLabels(next);
+        updateCardMutation.mutate({
+            cardId: card.id,
+            labels: next.map((label) => label.name),
+        });
+    }
+
+    function toggleAssignee(memberId: string) {
+        const next = assigneeIds.includes(memberId)
+            ? assigneeIds.filter((id) => id !== memberId)
+            : [...assigneeIds, memberId];
+        setAssigneeIds(next);
+        updateCardMutation.mutate({ cardId: card.id, assignees: next });
+    }
+
+    function moveToList(targetList: BoardList) {
+        if (targetList.id === listId) return;
+        const order = computeOrderForIndex(
+            targetList.cards.map((targetCard) => targetCard.order),
+            targetList.cards.length,
+        );
+        moveCardMutation.mutate({ cardId: card.id, listId: targetList.id, order });
+    }
+
     async function deleteCard() {
         try {
             await deleteCardMutation.mutateAsync(card.id);
@@ -119,44 +238,69 @@ export function CardDetailModal({
                         <LayoutDashboard className="size-[18px]" aria-hidden="true" />
                         <span>
                             in list{" "}
-                            <span className="decoration-outline-variant hover:text-primary cursor-pointer underline underline-offset-4 transition-colors">
-                                {listName}
-                            </span>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger
+                                    render={
+                                        <button
+                                            type="button"
+                                            className="decoration-outline-variant hover:text-primary cursor-pointer underline underline-offset-4 transition-colors"
+                                        />
+                                    }
+                                >
+                                    {listName}
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                    {lists.map((list) => (
+                                        <DropdownMenuItem
+                                            key={list.id}
+                                            onClick={() => moveToList(list)}
+                                        >
+                                            {list.id === listId && (
+                                                <Check
+                                                    className="size-4"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
+                                            {list.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </span>
                     </div>
                     <div className="gap-stack-sm flex items-center">
-                        {HEADER_ACTIONS.map(({ icon: Icon, label }) => (
-                            <button
-                                key={label}
-                                type="button"
-                                title={label}
-                                className="text-on-surface-variant hover:bg-surface-container-highest flex size-8 items-center justify-center rounded-lg transition-colors"
-                            >
-                                <Icon className="size-5" aria-hidden="true" />
-                            </button>
-                        ))}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
+                        <AlertDialog>
+                            <AlertDialogTrigger
                                 render={
                                     <button
                                         type="button"
-                                        title="More actions"
-                                        className="text-on-surface-variant hover:bg-surface-container-highest flex size-8 items-center justify-center rounded-lg transition-colors"
+                                        title="Delete card"
+                                        className="text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex size-8 items-center justify-center rounded-lg transition-colors"
                                     />
                                 }
                             >
-                                <MoreHorizontal className="size-5" aria-hidden="true" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => void deleteCard()}
-                                >
-                                    <Trash2 className="size-4" aria-hidden="true" />
-                                    Delete card
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                <Trash2 className="size-5" aria-hidden="true" />
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete this card?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This can&rsquo;t be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        variant="destructive"
+                                        onClick={() => void deleteCard()}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                         <div
                             className="bg-outline-variant/50 mx-1 h-5 w-px"
                             aria-hidden="true"
@@ -233,26 +377,55 @@ export function CardDetailModal({
                                 Add to card
                             </h4>
                             <div className="flex flex-col gap-2">
-                                <button
-                                    type="button"
-                                    className="bg-surface-container-low hover:bg-surface-container-high text-body-sm text-on-surface border-outline-variant/30 flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-solid"
-                                >
-                                    <User
-                                        className="text-on-surface-variant size-[18px]"
-                                        aria-hidden="true"
-                                    />
-                                    Assignees
-                                </button>
-                                <button
-                                    type="button"
-                                    className="bg-surface-container-low hover:bg-surface-container-high text-body-sm text-on-surface border-outline-variant/30 flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-solid"
-                                >
-                                    <Tag
-                                        className="text-on-surface-variant size-[18px]"
-                                        aria-hidden="true"
-                                    />
-                                    Labels
-                                </button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        render={
+                                            <button
+                                                type="button"
+                                                className="bg-surface-container-low hover:bg-surface-container-high text-body-sm text-on-surface border-outline-variant/30 flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-solid"
+                                            />
+                                        }
+                                    >
+                                        <User
+                                            className="text-on-surface-variant size-[18px]"
+                                            aria-hidden="true"
+                                        />
+                                        Assignees
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        {renderAssigneeMenuItems(
+                                            members,
+                                            assigneeIds,
+                                            toggleAssignee,
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        render={
+                                            <button
+                                                type="button"
+                                                className="bg-surface-container-low hover:bg-surface-container-high text-body-sm text-on-surface border-outline-variant/30 flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:border-solid"
+                                            />
+                                        }
+                                    >
+                                        <Tag
+                                            className="text-on-surface-variant size-[18px]"
+                                            aria-hidden="true"
+                                        />
+                                        Labels
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="p-2">
+                                        {renderLabelAdderForm(
+                                            labelDraft,
+                                            setLabelDraft,
+                                            () => {
+                                                addLabel(labelDraft);
+                                                setLabelDraft("");
+                                            },
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
 
@@ -265,25 +438,43 @@ export function CardDetailModal({
                             <h4 className="text-label-caps text-on-surface-variant tracking-wider uppercase">
                                 Assignees
                             </h4>
-                            <div className="flex flex-wrap gap-2">
-                                {(card.assignees ?? []).map((assignee) => (
+                            <div className="flex flex-wrap items-center gap-2">
+                                {assignedMembers.length === 0 && (
+                                    <span className="text-body-sm text-on-surface-variant">
+                                        No one assigned
+                                    </span>
+                                )}
+                                {assignedMembers.map((member) => (
                                     <Avatar
-                                        key={assignee.id}
+                                        key={member.id}
                                         className="ring-surface shadow-sm ring-2"
-                                        title={assignee.initials}
+                                        title={member.name}
                                     >
                                         <AvatarFallback className="bg-secondary-container text-on-secondary-container text-label-caps">
-                                            {assignee.initials}
+                                            {emailInitials(member.email)}
                                         </AvatarFallback>
                                     </Avatar>
                                 ))}
-                                <button
-                                    type="button"
-                                    aria-label="Add assignee"
-                                    className="bg-surface-container-highest border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-primary ring-surface flex size-8 items-center justify-center rounded-full border border-dashed ring-2 transition-colors"
-                                >
-                                    <Plus className="size-4" aria-hidden="true" />
-                                </button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        render={
+                                            <button
+                                                type="button"
+                                                aria-label="Add assignee"
+                                                className="bg-surface-container-highest border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-primary ring-surface flex size-8 items-center justify-center rounded-full border border-dashed ring-2 transition-colors"
+                                            />
+                                        }
+                                    >
+                                        <Plus className="size-4" aria-hidden="true" />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        {renderAssigneeMenuItems(
+                                            members,
+                                            assigneeIds,
+                                            toggleAssignee,
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
 
@@ -291,7 +482,12 @@ export function CardDetailModal({
                             <h4 className="text-label-caps text-on-surface-variant tracking-wider uppercase">
                                 Labels
                             </h4>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                {labels.length === 0 && (
+                                    <span className="text-body-sm text-on-surface-variant">
+                                        No labels yet
+                                    </span>
+                                )}
                                 {labels.map((label) => (
                                     <button
                                         key={label.id}
@@ -306,13 +502,29 @@ export function CardDetailModal({
                                         <X className="size-3.5" aria-hidden="true" />
                                     </button>
                                 ))}
-                                <button
-                                    type="button"
-                                    aria-label="Add label"
-                                    className="bg-surface-container-highest border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-primary flex h-6 w-8 items-center justify-center rounded border border-dashed transition-colors"
-                                >
-                                    <Plus className="size-4" aria-hidden="true" />
-                                </button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        render={
+                                            <button
+                                                type="button"
+                                                aria-label="Add label"
+                                                className="bg-surface-container-highest border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-primary flex h-6 w-8 items-center justify-center rounded border border-dashed transition-colors"
+                                            />
+                                        }
+                                    >
+                                        <Plus className="size-4" aria-hidden="true" />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="p-2">
+                                        {renderLabelAdderForm(
+                                            labelDraft,
+                                            setLabelDraft,
+                                            () => {
+                                                addLabel(labelDraft);
+                                                setLabelDraft("");
+                                            },
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     </div>

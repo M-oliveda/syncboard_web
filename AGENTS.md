@@ -564,6 +564,33 @@ Per `MASTERPLAN.md` §2.4 — do not introduce these without an explicit user re
 - Use Prettier for automatic code formatting
 - Add **Husky** to run linters, formatters, type-check, and tests before commits
 - Format and lint code automatically in CI
+- `npm run lint` runs `eslint . --max-warnings 0` — a lint **warning** fails the command
+  exactly like an error, both locally, in the Husky pre-commit hook, and in
+  `.github/workflows/ci.yml`'s `Lint` step. There is no warnings tier that's safe to
+  leave unresolved
+- **Never suppress a lint finding with an `eslint-disable`, `eslint-disable-next-line`,
+  or `eslint-disable-line` comment** (inline or block), and never add a per-file/per-
+  directory ESLint `overrides`/`ignores` entry as a workaround for a single finding. Fix
+  the underlying issue instead:
+  - A `react-refresh/only-export-components` warning on a context/hook colocated with
+    components (e.g. a `useX` hook + its components in one file) means: extract the
+    non-component export(s) — the context object, the hook, their types — into a sibling
+    `*-context.ts`/`*.ts` module and import from it, so the component file only exports
+    components. See `src/components/ui/carousel-context.ts` +
+    `src/components/ui/carousel.tsx` for the pattern
+  - An `@typescript-eslint/no-unused-vars` warning means delete the unused binding, not
+    prefix it and disable the rule
+  - An `@typescript-eslint/no-explicit-any` warning means replace `any` with the real
+    type or `unknown` + a narrowing guard
+  - If a rule is genuinely wrong for a legitimate, recurring pattern in this codebase
+    (not a one-off), change the rule's configuration in `eslint.config.ts` itself —
+    scoped to a `files` glob if it's pattern-specific — with a comment explaining why,
+    so the exception is visible, reviewed, and applies consistently rather than hidden
+    inline file-by-file
+  - The one standing exception is `src/routeTree.gen.ts`: it's TanStack Router codegen,
+    already excluded via `eslint.config.ts`'s `ignores` (not an inline disable comment),
+    regenerated on every build, and never hand-edited — don't touch its generated
+    `/* eslint-disable */` header and don't use it as precedent for hand-written files
 
 ### TypeScript Best Practices: Error Handling
 

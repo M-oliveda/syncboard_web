@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    colorForLabel,
+    emailInitials,
     mapApiBoardDetailToBoard,
     mapApiBoardToBoardSummary,
     mapApiCardToBoardCard,
@@ -9,6 +11,7 @@ import {
     memberInitialsFromWorkspaceMembers,
 } from "@/lib/api-mappers";
 import type { ApiCard, ApiList, ApiWorkspaceMember } from "@/types/api";
+import type { WorkspaceMember } from "@/types/workspace";
 
 const baseCard: ApiCard = {
     _id: "card-1",
@@ -49,9 +52,26 @@ describe("mapApiCardToBoardCard", () => {
     it("maps labels to a deterministic color", () => {
         const card = mapApiCardToBoardCard(baseCard);
         expect(card.labels?.[0]).toMatchObject({ id: "bug", name: "bug" });
-        expect(["primary", "secondary", "tertiary", "error"]).toContain(
-            card.labels?.[0]?.color,
+        expect(card.labels?.[0]?.color).toBe(colorForLabel("bug"));
+    });
+
+    it("leaves assignees empty when no member lookup is given", () => {
+        const card = mapApiCardToBoardCard({ ...baseCard, assignees: ["user-1"] });
+        expect(card.assignees).toEqual([]);
+    });
+
+    it("resolves assignee ids through the member lookup and drops unresolved ones", () => {
+        const members: WorkspaceMember[] = [
+            { id: "user-1", name: "mauricio", email: "mauricio@test.dev", role: "admin" },
+        ];
+        const lookup = new Map(members.map((member) => [member.id, member]));
+
+        const card = mapApiCardToBoardCard(
+            { ...baseCard, assignees: ["user-1", "user-missing"] },
+            lookup,
         );
+
+        expect(card.assignees).toEqual([{ id: "user-1", initials: "MA" }]);
     });
 });
 
@@ -76,6 +96,22 @@ describe("mapApiListToBoardList", () => {
         expect(result.order).toBe(3);
         expect(result.cards.map((card) => card.id)).toEqual(["card-2", "card-1"]);
     });
+
+    it("threads the member lookup through to each mapped card", () => {
+        const list: ApiList = { _id: "list-1", boardId: "board-1", title: "To Do", order: 1 };
+        const members: WorkspaceMember[] = [
+            { id: "user-1", name: "mauricio", email: "mauricio@test.dev", role: "admin" },
+        ];
+        const lookup = new Map(members.map((member) => [member.id, member]));
+
+        const result = mapApiListToBoardList(
+            list,
+            [{ ...baseCard, assignees: ["user-1"] }],
+            lookup,
+        );
+
+        expect(result.cards[0]?.assignees).toEqual([{ id: "user-1", initials: "MA" }]);
+    });
 });
 
 describe("mapApiBoardDetailToBoard", () => {
@@ -95,6 +131,31 @@ describe("mapApiBoardDetailToBoard", () => {
         });
 
         expect(board.lists.map((list) => list.name)).toEqual(["To Do", "Done"]);
+    });
+
+    it("threads the member lookup through to lists and cards", () => {
+        const members: WorkspaceMember[] = [
+            { id: "user-1", name: "mauricio", email: "mauricio@test.dev", role: "admin" },
+        ];
+        const lookup = new Map(members.map((member) => [member.id, member]));
+
+        const board = mapApiBoardDetailToBoard(
+            {
+                board: {
+                    _id: "board-1",
+                    workspaceId: "workspace-1",
+                    title: "Sprint",
+                    updatedAt: new Date().toISOString(),
+                },
+                lists: [{ _id: "list-1", boardId: "board-1", title: "To Do", order: 1 }],
+                cards: [{ ...baseCard, listId: "list-1", assignees: ["user-1"] }],
+            },
+            lookup,
+        );
+
+        expect(board.lists[0]?.cards[0]?.assignees).toEqual([
+            { id: "user-1", initials: "MA" },
+        ]);
     });
 });
 
@@ -135,6 +196,12 @@ describe("mapApiWorkspaceMemberToWorkspaceMember", () => {
         expect(
             mapApiWorkspaceMemberToWorkspaceMember({ ...member, role: "Member" }).role,
         ).toBe("member");
+    });
+});
+
+describe("emailInitials", () => {
+    it("uppercases the first two characters of the email's local part", () => {
+        expect(emailInitials("mauricio@test.dev")).toBe("MA");
     });
 });
 

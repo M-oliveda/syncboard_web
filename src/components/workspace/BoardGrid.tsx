@@ -105,7 +105,7 @@ export function BoardGrid({ boards, workspaceId }: BoardGridProps) {
             </Dialog>
 
             {boards.map((board) => (
-                <BoardCard key={board.id} board={board} />
+                <BoardCard key={board.id} board={board} workspaceId={workspaceId} />
             ))}
         </div>
     );

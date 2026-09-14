@@ -3,10 +3,10 @@ import type { Board, BoardCard } from "@/types/board";
 export function findCardInBoard(
     board: Board,
     cardId: string,
-): { card: BoardCard; listName: string } | undefined {
+): { card: BoardCard; listName: string; listId: string } | undefined {
     for (const list of board.lists) {
         const card = list.cards.find((candidate) => candidate.id === cardId);
-        if (card) return { card, listName: list.name };
+        if (card) return { card, listName: list.name, listId: list.id };
     }
     return undefined;
 }

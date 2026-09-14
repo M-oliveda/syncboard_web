@@ -60,6 +60,14 @@ export function ForgotPasswordPage() {
                         If that email exists, a reset link has been sent — check your
                         inbox.
                     </p>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => forgotPasswordMutation.reset()}
+                    >
+                        Try a different email
+                    </Button>
                 </div>
             ) : (
                 <form

@@ -20,11 +20,11 @@ export function AppShell({ breadcrumb, action, children }: AppShellProps) {
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                 <SheetContent
                     side="left"
-                    className="w-64 gap-0 p-0"
+                    className="gap-0 p-0 data-[side=left]:w-64"
                     showCloseButton={false}
                 >
                     <SheetTitle className="sr-only">Navigation</SheetTitle>
-                    <Sidebar className="border-none" />
+                    <Sidebar className="w-full border-none" />
                 </SheetContent>
             </Sheet>
 
