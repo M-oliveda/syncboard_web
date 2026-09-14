@@ -36,3 +36,42 @@ export function useCreateBoardMutation(workspaceId: string) {
         },
     });
 }
+
+export interface UpdateBoardInput {
+    boardId: string;
+    title: string;
+}
+
+export function useUpdateBoardMutation(workspaceId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ boardId, title }: UpdateBoardInput) => {
+            const response = await api.patch<ApiSuccess<ApiBoard>>(
+                `/boards/${boardId}`,
+                { title },
+            );
+            return response.data.data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({
+                queryKey: boardsQueryKey(workspaceId),
+            });
+        },
+    });
+}
+
+export function useDeleteBoardMutation(workspaceId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (boardId: string) => {
+            await api.delete(`/boards/${boardId}`);
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({
+                queryKey: boardsQueryKey(workspaceId),
+            });
+        },
+    });
+}
