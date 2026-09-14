@@ -14,6 +14,7 @@ import {
 import { useBoardDragAndDrop } from "@/hooks/useBoardDragAndDrop";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCreateListMutation } from "@/hooks/useListMutations";
+import { shouldCarouselHandleDrag } from "@/lib/carousel-drag";
 import type { Board } from "@/types/board";
 
 export interface BoardCanvasProps {
@@ -90,7 +91,7 @@ export function BoardCanvas({ board, boardId, onCardClick }: BoardCanvasProps) {
     if (isMobile) {
         return (
             <Carousel
-                opts={{ watchDrag: false, align: "start" }}
+                opts={{ watchDrag: shouldCarouselHandleDrag, align: "start" }}
                 className="flex flex-1 flex-col overflow-hidden"
             >
                 <DndContext
