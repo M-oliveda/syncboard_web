@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronRight, Sparkles } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { MembersPanel } from "@/components/workspace/MembersPanel";
@@ -6,6 +6,13 @@ import { BoardGrid } from "@/components/workspace/BoardGrid";
 import { StatsOverview } from "@/components/workspace/StatsOverview";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { OriginUiEmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -92,11 +99,19 @@ export function DashboardPage() {
     return (
         <AppShell
             breadcrumb={
-                <>
-                    <span>Workspace</span>
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                    <span className="text-on-surface font-semibold">Boards</span>
-                </>
+                <Breadcrumb>
+                    <BreadcrumbList className="flex-nowrap">
+                        <BreadcrumbItem>
+                            <span>Workspace</span>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage className="text-on-surface font-semibold">
+                                Boards
+                            </BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
             }
             action={
                 workspace && (

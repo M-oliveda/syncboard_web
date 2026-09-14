@@ -1,9 +1,17 @@
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { AlertTriangle, ChevronRight } from "lucide-react";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { AlertTriangle } from "lucide-react";
 
 import { BoardCanvas } from "@/components/board/BoardCanvas";
 import { CardDetailModal } from "@/components/card-modal/CardDetailModal";
 import { AppShell } from "@/components/layout/AppShell";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { OriginUiEmptyState } from "@/components/ui/empty-state";
 import { PresenceHeader } from "@/components/layout/PresenceHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,11 +48,25 @@ export function ActiveBoardPage() {
     return (
         <AppShell
             breadcrumb={
-                <>
-                    <span>Workspace</span>
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                    <span className="text-on-surface font-semibold">Boards</span>
-                </>
+                <Breadcrumb>
+                    <BreadcrumbList className="flex-nowrap">
+                        <BreadcrumbItem>
+                            <span>Workspace</span>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbLink render={<Link to="/app" />}>
+                                Boards
+                            </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage className="text-on-surface truncate font-semibold">
+                                {board?.name ?? "Board"}
+                            </BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
             }
         >
             {boardQuery.isError && (
