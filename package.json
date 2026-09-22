@@ -1,6 +1,6 @@
 {
   "name": "syncboard-web",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "SyncBoard Web — React 19 + Vite + TypeScript frontend for a real-time collaborative Kanban board",
   "license": "GPL-2.0",
   "private": true,
