@@ -73,7 +73,7 @@ describe("BoardGrid", () => {
     it("shows a pending state while the create request is in flight", async () => {
         server.use(
             http.post("*/workspaces/:workspaceId/boards", async () => {
-                await delay(50);
+                await delay(300);
                 return HttpResponse.json(
                     { success: true, data: { _id: "board-new", title: "Third Board" } },
                     { status: 201 },
