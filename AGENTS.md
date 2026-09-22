@@ -40,44 +40,56 @@ the 3-stage `Dockerfile`, and all four GCP projects/GitHub Environments
 (Preview/Development/Staging/Production) exist and are wired up — see `MASTERPLAN.md`
 §13 Phase 3 for the one known gap (image registry is Docker Hub, not GCP Artifact
 Registry). Workspaces, boards, lists, and cards are fetched and mutated through TanStack
-Query hooks in `src/hooks/` (`useWorkspacesQuery`, `useBoardsQuery`, `useBoardQuery`,
-`useListMutations`, `useCardMutations`, `useMemberMutations`) talking to `syncboard_api`
-via the Axios instance in `src/lib/api.ts`; `src/lib/api-mappers.ts` converts backend
-DTOs (`src/types/api.ts`) into the existing UI-facing types so presentational components
-didn't need to change shape. Login/register/forgot-password/reset-password
-(`src/components/auth/`) are wired to the real `/auth/*` endpoints, the access token
-lives in the module-level store `src/lib/auth-session.ts` (never `localStorage`), and
-`/app`'s `beforeLoad` (`src/routes/app/route.tsx`) attempts a silent
-`POST /auth/refresh` before redirecting to `/login`. Logout lives in the sidebar's
-account menu. `src/lib/mock-board.ts`/`mock-workspace.ts` are gone — superseded by real
-data; `src/lib/mock-roadmap.ts` and `mock-card-detail.ts` are still in active use
-(Roadmap stays a static demo board by design, and the card-detail Activity feed stays
-mock — see MASTERPLAN §5.3/§13 Phase 2 for why). Cards and lists can be dragged and
-reordered (`@dnd-kit`) with optimistic cache updates and rollback-on-failure — see
-`src/lib/reorder.ts` (pure move/order logic), `src/lib/board.ts`
-(`moveCardInBoard`/`moveListInBoard`), `useMoveCardMutation`/`useMoveListMutation`, and
-`useBoardDragAndDrop.ts` (the `@dnd-kit` wiring); `MASTERPLAN.md` §13 Phase 4 has the
-full breakdown, including the one known gap (no `onDragOver` cross-list visual reflow or
-`DragOverlay` yet — purely cosmetic, the move/rollback logic itself is complete). The
-board now stays live across tabs via a `socket.io-client` singleton
-(`src/lib/socket.ts`'s `getSocket()`) and `src/hooks/useSocket.ts`, which joins
-`board:<boardId>` and patches the TanStack Query cache directly from `card:updated`/
-`board:user-presence` events — never a refetch. `card:updated` reuses
-`src/lib/board.ts`'s `moveCardInBoard` (the same reconciliation function Phase 4's
-`useMoveCardMutation` already used), so a teammate's drag and your own drag converge on
-one patch path. Presence lives in the cache too, at `["board", boardId, "presence"]`
-(`usePresenceQuery`). Because the backend only ever broadcasts `card:updated` from its
-`card:moved` socket handler (a REST `PATCH /cards/:id` alone broadcasts nothing —
-verified by reading `api/src/sockets/handlers/card.handler.ts`), `useMoveCardMutation`'s
-`onSuccess` now also emits `card:moved` after its REST call succeeds, purely to trigger
-the broadcast; REST still does the actual persist/rollback. One consequence carried
-forward as a known gap: title/description/checklist edits (REST-only) still don't
-live-sync to other tabs, only card moves do — see `MASTERPLAN.md` §13 Phase 5 for that
-and the other deferred gap (reconnect-after-expired-token isn't explicitly coordinated
-with the Axios refresh flow). The sibling `syncboard_api` repo (fully scaffolded) is the
-reference for what "done" looks like for the _backend_ tooling level this project should
-converge on; as of this phase it also documents its refresh-token cookie handling as
-implemented rather than aspirational (`api/CLAUDE.md`).
+Query hooks in `src/hooks/` (`useWorkspacesQuery`, `useBoardsQuery` — including
+`useUpdateBoardMutation`/`useDeleteBoardMutation`, wired to `BoardCard.tsx`'s rename/
+delete controls on the dashboard, so board CRUD is now full create/read/update/delete,
+not just create/read/delete — `useBoardQuery`, `useListMutations`, `useCardMutations`,
+`useMemberMutations`) talking to `syncboard_api` via the Axios instance in
+`src/lib/api.ts`; `src/lib/api-mappers.ts` converts backend DTOs (`src/types/api.ts`)
+into the existing UI-facing types so presentational components didn't need to change
+shape. Login/register/forgot-password/reset-password (`src/components/auth/`) are wired
+to the real `/auth/*` endpoints, the access token lives in the module-level store
+`src/lib/auth-session.ts` (never `localStorage`), and `/app`'s `beforeLoad`
+(`src/routes/app/route.tsx`) attempts a silent `POST /auth/refresh` before redirecting
+to `/login`. Logout lives in the sidebar's account menu.
+`src/lib/mock-board.ts`/`mock-workspace.ts` are gone — superseded by real data;
+`src/lib/mock-roadmap.ts` and `mock-card-detail.ts` are still in active use (Roadmap
+stays a static demo board by design, and the card-detail Activity feed stays mock — see
+MASTERPLAN §5.3/§13 Phase 2 for why). `AppShell`'s header breadcrumb
+(`src/components/layout/AppShell.tsx`'s `breadcrumb` prop) is now built from a
+`Breadcrumb` origin-ui primitive (`src/components/ui/breadcrumb.tsx`) and shows the
+active board's real title on `ActiveBoardPage`/`RoadmapPage`, and the dashboard's own
+title on `DashboardPage` — replacing the earlier static "Boards" label. Cards and lists
+can be dragged and reordered (`@dnd-kit`) with optimistic cache updates and
+rollback-on-failure — see `src/lib/reorder.ts` (pure move/order logic),
+`src/lib/board.ts` (`moveCardInBoard`/`moveListInBoard`),
+`useMoveCardMutation`/`useMoveListMutation`, and `useBoardDragAndDrop.ts` (the
+`@dnd-kit` wiring); on mobile, `BoardCanvas.tsx`'s list carousel defers to an
+in-progress card/list drag via `src/lib/carousel-drag.ts`'s `shouldCarouselHandleDrag`
+(Embla's `watchDrag` predicate, keyed off `@dnd-kit`'s
+`aria-roledescription="draggable"` stamp), so a drag gesture no longer fights the
+carousel's own swipe handling. `MASTERPLAN.md` §13 Phase 4 has the full breakdown,
+including the one known gap (no `onDragOver` cross-list visual reflow or `DragOverlay`
+yet — purely cosmetic, the move/rollback logic itself is complete). The board now stays
+live across tabs via a `socket.io-client` singleton (`src/lib/socket.ts`'s
+`getSocket()`) and `src/hooks/useSocket.ts`, which joins `board:<boardId>` and patches
+the TanStack Query cache directly from `card:updated`/ `board:user-presence` events —
+never a refetch. `card:updated` reuses `src/lib/board.ts`'s `moveCardInBoard` (the same
+reconciliation function Phase 4's `useMoveCardMutation` already used), so a teammate's
+drag and your own drag converge on one patch path. Presence lives in the cache too, at
+`["board", boardId, "presence"]` (`usePresenceQuery`). Because the backend only ever
+broadcasts `card:updated` from its `card:moved` socket handler (a REST
+`PATCH /cards/:id` alone broadcasts nothing — verified by reading
+`api/src/sockets/handlers/card.handler.ts`), `useMoveCardMutation`'s `onSuccess` now
+also emits `card:moved` after its REST call succeeds, purely to trigger the broadcast;
+REST still does the actual persist/rollback. One consequence carried forward as a known
+gap: title/description/checklist edits (REST-only) still don't live-sync to other tabs,
+only card moves do — see `MASTERPLAN.md` §13 Phase 5 for that and the other deferred gap
+(reconnect-after-expired-token isn't explicitly coordinated with the Axios refresh
+flow). The sibling `syncboard_api` repo (fully scaffolded) is the reference for what
+"done" looks like for the _backend_ tooling level this project should converge on; as of
+this phase it also documents its refresh-token cookie handling as implemented rather
+than aspirational (`api/CLAUDE.md`).
 
 ## Mandatory: Generate a Coding Plan First
 

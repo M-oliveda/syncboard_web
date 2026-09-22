@@ -670,9 +670,11 @@ of work.
 
 - [x] Wire TanStack Query to `syncboard_api`'s REST endpoints
 - [x] Board, list, and card CRUD work end-to-end, with normal (non-optimistic)
-      loading/error states — rename/reorder (`order`, `listId`) stays Phase 4's job;
-      board/list rename UI doesn't exist yet either (create/read/delete only for those
-      two, full CRUD for cards)
+      loading/error states — reorder (`order`, `listId`) stays Phase 4's job. Board
+      rename/delete now ships from the dashboard's `BoardCard.tsx`
+      (`useUpdateBoardMutation`/`useDeleteBoardMutation` in `useBoardsQuery.ts`); list
+      rename UI still doesn't exist (create/read/delete only for lists, full CRUD for
+      boards and cards)
 - [x] Members panel wired to the `/workspaces/:workspaceId/members` endpoints (change
       role, remove). **Invite-by-email is not wired** — `POST /members` takes a
       `userId`, not an email, and the API has no user-lookup-by-email endpoint; the
