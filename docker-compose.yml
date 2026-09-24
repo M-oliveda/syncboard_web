@@ -1,0 +1,23 @@
+name: syncboard-web_local
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: syncboard-web_local-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src:/app/src
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+      - VITE_SOCKET_URL=${VITE_SOCKET_URL}
+      - VITE_APP_ENV=${VITE_APP_ENV}
+    command: npm run dev -- --host 0.0.0.0

@@ -31,30 +31,39 @@ static bundle on **Google Cloud Run**.
 
 ### This Repository Contains
 
-- 🔐 **Email/Password Auth** — login, register, forgot-password, and protected `/app` routes guarded by JWT session checks
-- 🖱️ **Drag-and-Drop Kanban Board** — `@dnd-kit` cards and lists with an optimistic UI that rolls back on failure
-- ⚡ **Real-Time Sync** — `socket.io-client` connection scoped per board, patching the TanStack Query cache directly
-- 🧑‍🤝‍🧑 **Live Presence** — avatars with a green dot for every user currently viewing a board (rendered from the user's email initials today — the API's `board:user-presence` payload doesn't include `name`/`avatarUrl` yet)
-- 🗂️ **Workspace & Board Management** — Workspace sidebar, Board grid, member management (invite, change/remove Admin/Member role), onboarding flow for first-time users
-- 🎨 **Polished UI** — Tailwind CSS + `origin-ui` (Shadcn/ui-based components) with Lucide icons
-- 🧪 **Vitest + Playwright Testing** — 100% unit/component coverage plus multi-tab E2E real-time sync scenarios
+- 🔐 **Email/Password Auth** — login, register, forgot-password, and protected `/app`
+  routes guarded by JWT session checks
+- 🖱️ **Drag-and-Drop Kanban Board** — `@dnd-kit` cards and lists with an optimistic UI
+  that rolls back on failure
+- ⚡ **Real-Time Sync** — `socket.io-client` connection scoped per board, patching the
+  TanStack Query cache directly
+- 🧑‍🤝‍🧑 **Live Presence** — avatars with a green dot for every user currently viewing a
+  board (rendered from the user's email initials today — the API's `board:user-presence`
+  payload doesn't include `name`/`avatarUrl` yet)
+- 🗂️ **Workspace & Board Management** — Workspace sidebar, Board grid, member management
+  (invite, change/remove Admin/Member role), onboarding flow for first-time users
+- 🎨 **Polished UI** — Tailwind CSS + `origin-ui` (Shadcn/ui-based components) with
+  Lucide icons
+- 🧪 **Vitest + Playwright Testing** — 100% unit/component coverage plus multi-tab E2E
+  real-time sync scenarios
 
 ### Related Repository
 
-This UI is one half of the SyncBoard product — the API and real-time layer it
-consumes live in a separate repository:
+This UI is one half of the SyncBoard product — the API and real-time layer it consumes
+live in a separate repository:
 
-- **Backend Repository:** [`m-oliveda/syncboard_api`](https://github.com/m-oliveda/syncboard_api)
-  (see its [README](https://github.com/m-oliveda/syncboard_api/blob/main/README.md) for
-  the REST/WebSocket contract, database schema, and the Cloud Run multi-instance
+- **Backend Repository:**
+  [`m-oliveda/syncboard_api`](https://github.com/m-oliveda/syncboard_api) (see its
+  [README](https://github.com/m-oliveda/syncboard_api/blob/main/README.md) for the
+  REST/WebSocket contract, database schema, and the Cloud Run multi-instance
   synchronization design)
 
 ---
 
 ## Architecture
 
-The application is a Single Page Application served via Nginx inside a Docker
-container, itself deployed as a Cloud Run service.
+The application is a Single Page Application served via Nginx inside a Docker container,
+itself deployed as a Cloud Run service.
 
 ```text
 ┌───────────────────────────────────────────────────────────────────┐
@@ -88,16 +97,16 @@ talks to MongoDB or Redis directly; everything goes through the API.
 
 ### 2. The Active Board
 
-| Feature               | Description                                                                   |
-| --------------------- | ----------------------------------------------------------------------------- |
-| **Horizontal Canvas** | Scrollable container for an arbitrary number of lists                         |
-| **Drag & Drop**       | `@dnd-kit/core` + `@dnd-kit/sortable` for cards and lists                     |
-| **Optimistic UI**     | The DOM updates the instant a card is dropped; a failed request snaps it back |
+| Feature               | Description                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Horizontal Canvas** | Scrollable container for an arbitrary number of lists                                                                         |
+| **Drag & Drop**       | `@dnd-kit/core` + `@dnd-kit/sortable` for cards and lists                                                                     |
+| **Optimistic UI**     | The DOM updates the instant a card is dropped; a failed request snaps it back                                                 |
 | **Live Presence**     | Avatars (email initials until the API exposes `name`/`avatarUrl`) with a green dot for every user currently viewing the board |
-| **Card Detail Modal** | Rich-text description, checklists with progress bars, activity feed           |
+| **Card Detail Modal** | Rich-text description, checklists with progress bars, activity feed                                                           |
 
-> Drag-and-drop computes fractional/LexoRank-style `order` values matching the
-> backend's [reorder strategy](https://github.com/m-oliveda/syncboard_api/blob/main/README.md#database-schema-mongodb),
+> Drag-and-drop computes fractional/LexoRank-style `order` values matching the backend's
+> [reorder strategy](https://github.com/m-oliveda/syncboard_api/blob/main/README.md#database-schema-mongodb),
 > so a card move never requires re-indexing its siblings.
 
 ### 3. Real-Time Sync
@@ -160,13 +169,13 @@ talks to MongoDB or Redis directly; everything goes through the API.
 
 ## Routes & Pages
 
-| Route                  | Type            | Purpose                                                                                  |
+| Route                  | Type            | Purpose                                                                                   |
 | ---------------------- | --------------- | ----------------------------------------------------------------------------------------- |
-| `/`                    | Public          | Landing page — product pitch, feature highlights, CTA to register/login                  |
-| `/login`               | Public (unauth) | Email/password login                                                                     |
-| `/register`            | Public (unauth) | Account registration                                                                     |
-| `/forgot-password`     | Public (unauth) | Password reset trigger                                                                   |
-| `/app`                 | Protected       | Home app — Workspace sidebar, Board grid                                                 |
+| `/`                    | Public          | Landing page — product pitch, feature highlights, CTA to register/login                   |
+| `/login`               | Public (unauth) | Email/password login                                                                      |
+| `/register`            | Public (unauth) | Account registration                                                                      |
+| `/forgot-password`     | Public (unauth) | Password reset trigger                                                                    |
+| `/app`                 | Protected       | Home app — Workspace sidebar, Board grid                                                  |
 | `/app/boards/:boardId` | Protected       | The active board — Kanban canvas (see [`MASTERPLAN.md`](./MASTERPLAN.md#5-routes--pages)) |
 
 ### Protected Layout (`/app`)
@@ -256,8 +265,9 @@ This project uses Husky to enforce quality standards automatically, so CI failur
 lint/format/commit-message issues never happen — they're caught before the commit
 exists:
 
-- **Pre-commit:** runs `lint` and `format:check` against staged files
-- **Commit message:** validated against Gitmoji format (e.g. `:sparkles: Add optimistic drag-and-drop for cards`), matching the convention used in
+- **Pre-commit:** runs `lint`, `format:check`, `type-check`, and `test`
+- **Commit message:** validated against Gitmoji format (e.g.
+  `:sparkles: Add optimistic drag-and-drop for cards`), matching the convention used in
   [`syncboard_api`](https://github.com/m-oliveda/syncboard_api)
 
 ---
@@ -312,8 +322,8 @@ tests/
 e2e/                                # Playwright specs (drag-and-drop, multi-tab sync)
 ```
 
-`tests/` mirrors the `src/` tree one-to-one, so a source file's coverage gaps are easy to
-locate.
+`tests/` mirrors the `src/` tree one-to-one, so a source file's coverage gaps are easy
+to locate.
 
 ---
 
@@ -360,6 +370,12 @@ no long-lived GCP service account keys are stored in CI:
 - **Deploy Production:** manual approval gate, same build/deploy steps against
   production `VITE_*` values
 
+Dev/Staging/Preview deploy steps build the Docker image with `--target protected` and
+`AUTH_USERNAME`/`AUTH_PASSWORD` build args (from GitHub Environment secrets) to keep
+those environments behind Basic Auth; the Production deploy step builds
+`--target production` with no auth args, so Production stays public — see
+[Environment Access Protection](#environment-access-protection-basic-auth).
+
 Secrets are organized using **GitHub Environments** (`development`, `staging`,
 `preview`, `production`), each scoped to its own `VITE_API_BASE_URL` and
 `VITE_SOCKET_URL` — `preview`'s values are the same as `development`'s API URLs.
@@ -377,6 +393,12 @@ gcloud run deploy syncboard-web \
   --image gcr.io/<project-id>/syncboard-web \
   --set-env-vars VITE_API_BASE_URL=...,VITE_SOCKET_URL=...
 ```
+
+> Build with `docker build --target production ...` for Production (public, no auth).
+> For Preview/Development/Staging, build with
+> `docker build --target protected --build-arg AUTH_USERNAME=... --build-arg AUTH_PASSWORD=... ...`
+> instead — see
+> [Environment Access Protection](#environment-access-protection-basic-auth).
 
 > Vite env vars are baked into the static bundle at **build time** — set them before
 > `npm run build` / the Docker build step, not as Cloud Run runtime env vars alone.
@@ -408,13 +430,14 @@ syncboard_web/
 │
 ├── e2e/                                                # Playwright specs
 ├── tests/                                                # Vitest unit/integration tests
-├── .husky/                                                 # Pre-commit lint/format/test + commit-msg hooks
+├── .husky/                                                 # Pre-commit lint/format/type-check/test + commit-msg hooks
 ├── .github/
 │   └── workflows/                                            # CI + per-environment deploy pipelines
 ├── .env.example
 ├── .env
-├── Dockerfile
-├── nginx.conf
+├── Dockerfile                    # builder → production (public) / protected (Basic Auth) targets
+├── nginx.conf                    # Public (Production)
+├── nginx.protected.conf          # HTTP Basic Auth (Preview/Development/Staging)
 ├── docker-compose.yml
 ├── vite.config.ts
 ├── tsconfig.json
@@ -449,6 +472,25 @@ for a variable to be exposed to client code, and values are embedded into the bu
 > **Development** API's Cloud Run URL — there is no per-PR backend, so every Preview
 > deploy shares the same Development API and its data.
 
+### Environment Access Protection (Basic Auth)
+
+Preview, Development, and Staging are not public — they're kept internal-only behind
+HTTP Basic Auth at the Nginx layer, since they're not customer-facing. Production has no
+Basic Auth and is fully public.
+
+This is a **build-time** choice, made by selecting the Dockerfile stage — matching the
+pattern used by the sibling `sentient-archive/web` project:
+
+- `docker build --target protected --build-arg AUTH_USERNAME=... --build-arg AUTH_PASSWORD=...`
+  → bakes an `.htpasswd` file into the image and serves `nginx.protected.conf`. Used for
+  Preview/Development/Staging.
+- `docker build --target production` (no auth args) → serves the public `nginx.conf`.
+  Used for Production.
+
+`AUTH_USERNAME`/`AUTH_PASSWORD` are never in `.env`/`.env.example` — they're passed only
+as Docker build args, sourced from GitHub Environment secrets in CI (see
+[CI/CD Pipeline](#cicd-pipeline)).
+
 ---
 
 ## License
@@ -459,4 +501,5 @@ details.
 ## Additional Resources
 
 - **Detailed Architecture:** [MASTERPLAN.md](./MASTERPLAN.md)
-- **Backend Repository:** [`m-oliveda/syncboard_api`](https://github.com/m-oliveda/syncboard_api)
+- **Backend Repository:**
+  [`m-oliveda/syncboard_api`](https://github.com/m-oliveda/syncboard_api)

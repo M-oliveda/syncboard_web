@@ -1,0 +1,125 @@
+# CI Workflow
+#
+# Runs on all pull requests to develop/release/**/main and pushes to develop/release/**.
+# Validates code quality, runs the full test suite (+ Playwright), and enforces the 100%
+# coverage gate. On a pull_request event, deploys an ephemeral PR preview after tests
+# pass. On a push (e.g. a PR merge), deploys to the matching environment via a reusable
+# workflow: develop -> deploy-dev.yml, release/** -> deploy-staging.yml. None of the
+# reusable deploy workflows have a trigger of their own, so a deploy can never happen
+# before (or without) this workflow's test/e2e jobs passing. Production is not deployed
+# from here — see deploy-prod.yml, which is manually dispatched and reuses this
+# workflow's jobs (via the workflow_call trigger below) instead of duplicating them.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, "release/**", main]
+  push:
+    branches: [develop, "release/**", main]
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format Check
+        run: npm run format:check
+
+      - name: Type Check
+        run: npm run type-check
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
+          retention-days: 7
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright suite
+        env:
+          VITE_API_BASE_URL: http://localhost:4000/api/v1
+          VITE_SOCKET_URL: http://localhost:4000
+          VITE_APP_ENV: test
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    needs: [test, e2e]
+    uses: ./.github/workflows/deploy-preview.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: [test, e2e]
+    uses: ./.github/workflows/deploy-dev.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+
+  deploy-staging:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    needs: [test, e2e]
+    uses: ./.github/workflows/deploy-staging.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
